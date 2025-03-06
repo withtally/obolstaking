@@ -1,16 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 // slither-disable-start reentrancy-benign
 
 pragma solidity 0.8.28;
 
 import {Script} from "forge-std/Script.sol";
-import {Counter} from "src/Counter.sol";
 
 contract Deploy is Script {
-  Counter counter;
-
   function run() public {
     vm.broadcast();
-    counter = new Counter();
   }
 }
