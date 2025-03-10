@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// slither-disable-start reentrancy-benign
+
+pragma solidity 0.8.28;
+
+import {Script, console2} from "forge-std/Script.sol";
+import {Staker, IERC20} from "staker/Staker.sol";
+import {GovLst} from "stGOV/GovLst.sol";
+import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
+import {IERC20Staking} from "staker/interfaces/IERC20Staking.sol";
+import {ObolStaker} from "src/ObolStaker.sol";
+import {ObolLst} from "src/ObolLst.sol";
+
+abstract contract BaseObolDeploy is Script {
+  ObolStaker internal staker;
+  address public deployer;
+  uint256 public deployerPrivateKey;
+
+  struct ObolStakerParams {
+    IERC20 rewardsToken;
+    IERC20Staking stakeToken;
+    uint256 maxBumpTip;
+    address admin;
+    string name;
+  }
+
+  function setUp() public virtual {
+    deployerPrivateKey = vm.envOr(
+      "DEPLOYER_PRIVATE_KEY",
+      uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+    );
+    deployer = vm.rememberKey(deployerPrivateKey);
+
+    console2.log("Deploying from", deployer);
+  }
+
+  function _deployEarningPowerCalculator() internal virtual returns (IEarningPowerCalculator);
+
+  function _getStakerConfig() internal view virtual returns (ObolStakerParams memory);
+
+  function _getLstConfig() internal view virtual returns (GovLst.ConstructorParams memory);
+
+  function _deployRewardNotifiers() internal virtual returns (address[] memory) {
+    return new address[](0);
+  }
+
+  function run() public virtual {
+    IEarningPowerCalculator _calculator = _deployEarningPowerCalculator();
+    console2.log("Deployed Earning Power Calculator", address(_calculator));
+
+    ObolStakerParams memory _stakerParams = _getStakerConfig();
+
+    vm.broadcast(deployer);
+    staker = new ObolStaker(
+      _stakerParams.rewardsToken,
+      _stakerParams.stakeToken,
+      _calculator,
+      _stakerParams.maxBumpTip,
+      _stakerParams.admin,
+      _stakerParams.name
+    );
+    console2.log("Deployed Obol Staker:", address(staker));
+
+    // TBD: Is this step actually needed?
+    vm.broadcast(deployer);
+    Staker.DepositIdentifier _depositId = staker.stake(0, deployer);
+    console2.log("Deployer Claimed Deposit #", Staker.DepositIdentifier.unwrap(_depositId));
+
+    address[] memory _notifiers = _deployRewardNotifiers();
+    for (uint256 _i = 0; _i < _notifiers.length; _i++) {
+      vm.broadcast(deployer);
+      staker.setRewardNotifier(_notifiers[_i], true);
+      console2.log("Deployed and Configured Notifier", _notifiers[_i]);
+    }
+
+    GovLst.ConstructorParams memory _lstParams = _getLstConfig();
+
+    uint256 _deployerNonce = vm.getNonce(deployer);
+    // +1 because approval will happen first
+    address _computedLstAddress = vm.computeCreateAddress(deployer, _deployerNonce + 1);
+
+    vm.broadcast(deployer);
+    _stakerParams.stakeToken.approve(_computedLstAddress, _lstParams.stakeToBurn);
+    console2.log("Approved", _computedLstAddress, "for", _lstParams.stakeToBurn);
+
+    vm.broadcast(deployer);
+    ObolLst _rebasingLst = new ObolLst(_lstParams);
+
+    console2.log("Deployed Rebasing Obol LST:", address(_rebasingLst));
+    console2.log("Deployed Fixed Obol LST:", address(_rebasingLst.FIXED_LST()));
+  }
+}
