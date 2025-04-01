@@ -6,6 +6,10 @@
   solc_version = "0.8.28"
   verbosity = 3
 
+[profile.deployment]
+  optimizer_runs = 5083
+  via_ir = true
+
 [profile.ci]
   fuzz = { runs = 5000 }
   invariant = { runs = 1000 }
