@@ -3,4 +3,4 @@
 	url = https://github.com/foundry-rs/forge-std
 [submodule "lib/stGOV"]
 	path = lib/stGOV
-	url = https://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@github.com/withtally/stGOV
+	url = https://github.com/withtally/stGOV
