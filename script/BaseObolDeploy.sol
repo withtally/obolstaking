@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MIT
 // slither-disable-start reentrancy-benign
 
 pragma solidity 0.8.28;
@@ -9,7 +9,7 @@ import {GovLst} from "stGOV/GovLst.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IERC20Staking} from "staker/interfaces/IERC20Staking.sol";
 import {ObolStaker} from "src/ObolStaker.sol";
-import {ObolLst} from "src/ObolLst.sol";
+import {RebasingStakedObol} from "src/RebasingStakedObol.sol";
 
 abstract contract BaseObolDeploy is Script {
   ObolStaker internal staker;
@@ -84,7 +84,7 @@ abstract contract BaseObolDeploy is Script {
     console2.log("Approved", _computedLstAddress, "for", _lstParams.stakeToBurn);
 
     vm.broadcast(deployer);
-    ObolLst _rebasingLst = new ObolLst(_lstParams);
+    RebasingStakedObol _rebasingLst = new RebasingStakedObol(_lstParams);
 
     console2.log("Deployed Rebasing Obol LST:", address(_rebasingLst));
     console2.log("Deployed Fixed Obol LST:", address(_rebasingLst.FIXED_LST()));

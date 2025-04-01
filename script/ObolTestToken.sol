@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -8,8 +8,8 @@ import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /// @notice Test Token used for onchain testing of the ObolStaker system.
 contract ObolTestToken is ERC20Votes, ERC20Permit {
-  string private constant NAME = "Obol Staker Test Token";
-  string private constant SYMBOL = "OBOLTEST";
+  string private constant NAME = "Obol Staker Test Token 2";
+  string private constant SYMBOL = "OBOLTEST2";
   uint256 private constant MINT_AMOUNT = 357_000_000e18;
 
   constructor() ERC20(NAME, SYMBOL) ERC20Permit(NAME) {

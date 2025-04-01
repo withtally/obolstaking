@@ -28,3 +28,10 @@ forge script script/SepoliaObolDeploy.s.sol --rpc-url=https://ethereum-sepolia-r
 ```
 
 *NOTE:* Mainnet deployment scripts are in progress
+
+
+## License
+
+The code in this repository is licensed under the [MIT](LICENSE.txt) unless otherwise indicated.
+
+Copyright (C) 2025 Tally
