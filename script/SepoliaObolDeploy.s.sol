@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MIT
 // slither-disable-start reentrancy-benign
 
 pragma solidity 0.8.28;
@@ -55,10 +55,10 @@ contract SepoliaObolDeploy is Base {
 
   function _getLstConfig() internal view virtual override returns (GovLst.ConstructorParams memory) {
     return GovLst.ConstructorParams({
-      fixedLstName: "Obol LST Test",
-      fixedLstSymbol: "stOBOLTEST",
-      rebasingLstName: "Rebasing Obol LST Test",
-      rebasingLstSymbol: "rstOBOLTEST",
+      fixedLstName: "Staked Obol Test",
+      fixedLstSymbol: "stOBOLTEST2",
+      rebasingLstName: "Rebasing Staked Obol Test",
+      rebasingLstSymbol: "rstOBOLTEST2",
       version: "1",
       // Deployed earlier in the script execution
       staker: staker,
@@ -69,7 +69,7 @@ contract SepoliaObolDeploy is Base {
       // purposes. A discussion is warranted on what the real value should be.
       initialPayoutAmount: 100e18,
       initialDelegateeGuardian: deployer,
-      // 1 OBOLTEST
+      // 1 OBOLTEST2
       stakeToBurn: 1e18,
       // This is pretty arbitrary but should be fine for the test deployment. The prod value needs
       // some thought, but is pretty moot given the identity calculator is used to start.

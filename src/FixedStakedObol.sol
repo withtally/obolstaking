@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
 import {FixedGovLst, IERC20} from "stGOV/FixedGovLst.sol";
@@ -6,7 +6,7 @@ import {FixedGovLstPermitAndStake} from "stGOV/extensions/FixedGovLstPermitAndSt
 import {FixedGovLstOnBehalf} from "stGOV/extensions/FixedGovLstOnBehalf.sol";
 import {GovLst} from "stGOV/GovLst.sol";
 
-contract FixedObolLst is FixedGovLst, FixedGovLstPermitAndStake, FixedGovLstOnBehalf {
+contract FixedStakedObol is FixedGovLst, FixedGovLstPermitAndStake, FixedGovLstOnBehalf {
   constructor(
     string memory _name,
     string memory _symbol,
