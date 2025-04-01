@@ -71,9 +71,6 @@ contract SepoliaObolDeploy is Base {
       initialDelegateeGuardian: deployer,
       // 1 OBOLTEST2
       stakeToBurn: 1e18,
-      // This is pretty arbitrary but should be fine for the test deployment. The prod value needs
-      // some thought, but is pretty moot given the identity calculator is used to start.
-      maxOverrideTip: 10e18,
       // 100% since we're using the identity calculator
       minQualifyingEarningPowerBips: 1e4
     });
