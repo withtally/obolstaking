@@ -36,9 +36,15 @@ abstract contract BaseObolDeploy is Script {
 
   function _deployEarningPowerCalculator() internal virtual returns (IEarningPowerCalculator);
 
+  function _getOrDeployAutoDelegate() internal virtual returns (address);
+
   function _getStakerConfig() internal view virtual returns (ObolStakerParams memory);
 
-  function _getLstConfig() internal view virtual returns (GovLst.ConstructorParams memory);
+  function _getLstConfig(address _autoDelegate)
+    internal
+    view
+    virtual
+    returns (GovLst.ConstructorParams memory);
 
   function _deployRewardNotifiers() internal virtual returns (address[] memory) {
     return new address[](0);
@@ -46,43 +52,58 @@ abstract contract BaseObolDeploy is Script {
 
   function run() public virtual {
     IEarningPowerCalculator _calculator = _deployEarningPowerCalculator();
-    console2.log("Deployed Earning Power Calculator", address(_calculator));
+    console2.log("Deployed Earning Power Calculator:", address(_calculator));
 
     ObolStakerParams memory _stakerParams = _getStakerConfig();
 
+    // Deploy the core staker contract
     vm.broadcast(deployer);
     staker = new ObolStaker(
       _stakerParams.rewardsToken,
       _stakerParams.stakeToken,
       _calculator,
       _stakerParams.maxBumpTip,
-      _stakerParams.admin,
+      deployer,
       _stakerParams.name
     );
     console2.log("Deployed Obol Staker:", address(staker));
 
-    // TBD: Is this step actually needed?
-    vm.broadcast(deployer);
-    Staker.DepositIdentifier _depositId = staker.stake(0, deployer);
-    console2.log("Deployer Claimed Deposit #", Staker.DepositIdentifier.unwrap(_depositId));
-
+    // Deploy and set the reward notifiers
     address[] memory _notifiers = _deployRewardNotifiers();
     for (uint256 _i = 0; _i < _notifiers.length; _i++) {
       vm.broadcast(deployer);
       staker.setRewardNotifier(_notifiers[_i], true);
-      console2.log("Deployed and Configured Notifier", _notifiers[_i]);
+      console2.log("Deployed and Configured Notifier:", _notifiers[_i]);
     }
 
-    GovLst.ConstructorParams memory _lstParams = _getLstConfig();
+    // Give admin to the proper address
+    vm.broadcast(deployer);
+    staker.setAdmin(_stakerParams.admin);
+    console2.log("Updated Staker admin to:", _stakerParams.admin);
+
+    // Initialize the first deposit to ensure it's not owned by the LST, as this breaks the LST
+    // accounting system.
+    vm.broadcast(deployer);
+    Staker.DepositIdentifier _depositId = staker.stake(0, deployer);
+    console2.log("Deployer Claimed Deposit #", Staker.DepositIdentifier.unwrap(_depositId));
+
+    // Get the address of the LST's auto delegate, which may be deployed in the process
+    address _autoDelegate = _getOrDeployAutoDelegate();
+    console2.log("Using Auto Delegate:", _autoDelegate);
+
+    // Get the LST config
+    GovLst.ConstructorParams memory _lstParams = _getLstConfig(_autoDelegate);
 
     uint256 _deployerNonce = vm.getNonce(deployer);
     // +1 because approval will happen first
     address _computedLstAddress = vm.computeCreateAddress(deployer, _deployerNonce + 1);
 
+    // Approve the (yet to be deployed) LST address to pull tokens during its deployment
     vm.broadcast(deployer);
     _stakerParams.stakeToken.approve(_computedLstAddress, _lstParams.stakeToBurn);
     console2.log("Approved", _computedLstAddress, "for", _lstParams.stakeToBurn);
 
+    // Deploy the Rebasing LST which also deploys the Fixed LST
     vm.broadcast(deployer);
     RebasingStakedObol _rebasingLst = new RebasingStakedObol(_lstParams);
 

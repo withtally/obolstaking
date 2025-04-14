@@ -53,7 +53,18 @@ contract SepoliaObolDeploy is Base {
     return _return;
   }
 
-  function _getLstConfig() internal view virtual override returns (GovLst.ConstructorParams memory) {
+  function _getOrDeployAutoDelegate() internal virtual override returns (address) {
+    // Simply a burn address
+    return address(0x0b01);
+  }
+
+  function _getLstConfig(address _autoDelegate)
+    internal
+    view
+    virtual
+    override
+    returns (GovLst.ConstructorParams memory)
+  {
     return GovLst.ConstructorParams({
       fixedLstName: "Staked Obol Test",
       fixedLstSymbol: "stOBOLTEST2",
@@ -62,8 +73,7 @@ contract SepoliaObolDeploy is Base {
       version: "1",
       // Deployed earlier in the script execution
       staker: staker,
-      // Simply a burn address
-      initialDefaultDelegatee: address(0x0b01),
+      initialDefaultDelegatee: _autoDelegate,
       initialOwner: deployer,
       // Setting this to something small so that integrators can trigger it frequently for testing
       // purposes. A discussion is warranted on what the real value should be.
