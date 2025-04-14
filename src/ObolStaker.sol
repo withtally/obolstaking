@@ -8,7 +8,19 @@ import {StakerOnBehalf, EIP712} from "staker/extensions/StakerOnBehalf.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IERC20Staking} from "staker/interfaces/IERC20Staking.sol";
 
+/// @title ObolStaker
+/// @author [ScopeLift](https://scopelift.co)
+/// @notice Core staking contract for the Obol Collective. Built on top of the Tally Staker
+/// contracts. This implementation includes permit functionality for gasless approvals, staking
+/// on behalf of other addresses, and delegation of voting power through surrogate contracts.
 contract ObolStaker is Staker, StakerDelegateSurrogateVotes, StakerPermitAndStake, StakerOnBehalf {
+  /// @notice Initializes the ObolStaker contract with required parameters.
+  /// @param _rewardsToken ERC20 token in which rewards will be denominated.
+  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _earningPowerCalculator The contract that will calculate earning power for depositors.
+  /// @param _maxBumpTip Maximum tip that can be paid to bumpers for updating earning power.
+  /// @param _admin Address which will have permission to manage reward notifiers.
+  /// @param _name Name used in the EIP712 domain separator for permit functionality.
   constructor(
     IERC20 _rewardsToken,
     IERC20Staking _stakeToken,
