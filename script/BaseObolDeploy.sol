@@ -38,10 +38,10 @@ abstract contract BaseObolDeploy is Script {
 
   function _getOrDeployAutoDelegate() internal virtual returns (address);
 
-  function _getStakerConfig() internal view virtual returns (ObolStakerParams memory);
+  function _getStakerConfig() public view virtual returns (ObolStakerParams memory);
 
   function _getLstConfig(address _autoDelegate)
-    internal
+    public
     view
     virtual
     returns (GovLst.ConstructorParams memory);
@@ -50,8 +50,17 @@ abstract contract BaseObolDeploy is Script {
     return new address[](0);
   }
 
-  function run() public virtual {
-    IEarningPowerCalculator _calculator = _deployEarningPowerCalculator();
+  function run()
+    public
+    virtual
+    returns (
+      ObolStaker _staker,
+      IEarningPowerCalculator _calculator,
+      RebasingStakedObol _rebasingLst,
+      address _autoDelegate
+    )
+  {
+    _calculator = _deployEarningPowerCalculator();
     console2.log("Deployed Earning Power Calculator:", address(_calculator));
 
     ObolStakerParams memory _stakerParams = _getStakerConfig();
@@ -67,6 +76,7 @@ abstract contract BaseObolDeploy is Script {
       _stakerParams.name
     );
     console2.log("Deployed Obol Staker:", address(staker));
+    _staker = staker;
 
     // Deploy and set the reward notifiers
     address[] memory _notifiers = _deployRewardNotifiers();
@@ -88,7 +98,7 @@ abstract contract BaseObolDeploy is Script {
     console2.log("Deployer Claimed Deposit #", Staker.DepositIdentifier.unwrap(_depositId));
 
     // Get the address of the LST's auto delegate, which may be deployed in the process
-    address _autoDelegate = _getOrDeployAutoDelegate();
+    _autoDelegate = _getOrDeployAutoDelegate();
     console2.log("Using Auto Delegate:", _autoDelegate);
 
     // Get the LST config
@@ -105,7 +115,7 @@ abstract contract BaseObolDeploy is Script {
 
     // Deploy the Rebasing LST which also deploys the Fixed LST
     vm.broadcast(deployer);
-    RebasingStakedObol _rebasingLst = new RebasingStakedObol(_lstParams);
+    _rebasingLst = new RebasingStakedObol(_lstParams);
 
     console2.log("Deployed Rebasing Obol LST:", address(_rebasingLst));
     console2.log("Deployed Fixed Obol LST:", address(_rebasingLst.FIXED_LST()));

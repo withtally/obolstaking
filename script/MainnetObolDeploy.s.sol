@@ -4,6 +4,8 @@
 pragma solidity 0.8.28;
 
 import {console2} from "forge-std/Script.sol";
+import {ObolStaker} from "src/ObolStaker.sol";
+import {RebasingStakedObol} from "src/RebasingStakedObol.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IdentityEarningPowerCalculator} from "staker/calculators/IdentityEarningPowerCalculator.sol";
 import {IERC20Staking} from "staker/interfaces/IERC20Staking.sol";
@@ -52,7 +54,7 @@ contract MainnetObolDeploy is Base {
     return _calculator;
   }
 
-  function _getStakerConfig() internal view virtual override returns (Base.ObolStakerParams memory) {
+  function _getStakerConfig() public view virtual override returns (Base.ObolStakerParams memory) {
     return Base.ObolStakerParams({
       rewardsToken: OBOL_TOKEN,
       stakeToken: OBOL_TOKEN,
@@ -92,7 +94,7 @@ contract MainnetObolDeploy is Base {
   }
 
   function _getLstConfig(address _autoDelegate)
-    internal
+    public
     view
     virtual
     override
@@ -120,7 +122,16 @@ contract MainnetObolDeploy is Base {
     });
   }
 
-  function run() public override {
-    super.run();
+  function run()
+    public
+    override
+    returns (
+      ObolStaker _staker,
+      IEarningPowerCalculator _calculator,
+      RebasingStakedObol _rebasingLst,
+      address _autoDelegate
+    )
+  {
+    (_staker, _calculator, _rebasingLst, _autoDelegate) = super.run();
   }
 }
