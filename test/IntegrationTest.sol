@@ -4,49 +4,20 @@ pragma solidity ^0.8.23;
 import {Test, console2} from "forge-std/Test.sol";
 import {ObolStaker, IERC20} from "src/ObolStaker.sol";
 import {RebasingStakedObol} from "src/RebasingStakedObol.sol";
-import {BinaryEligibilityOracleEarningPowerCalculator} from
-  "staker/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
-import {IERC20Staking} from "staker/interfaces/IERC20Staking.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 
-import {MainnetObolDeploy} from "script/MainnetObolDeploy.s.sol";
-
 contract IntegrationTest is Test {
-  address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
-  // TODO: get mainnet RPC URL from env var?
-  string constant MAINNET_RPC_URL =
-    "https://eth-mainnet.g.alchemy.com/v2/s3dCCqynx_KY3qTvVd_OkGcO2xXViWFh";
-  uint256 constant DEPLOYER_DEAL_AMOUNT = (1e18 * 2) + 5_000_000e18;
-
   address deployer;
   ObolStaker obolStaker;
   RebasingStakedObol obolLst;
   IEarningPowerCalculator calculator;
   address autoDelegate;
-  MainnetObolDeploy deployScript;
 
   uint256 constant REWARD_DURATION = 30 days;
   uint256 constant SCALE_FACTOR = 1e36;
-  uint256 constant MAX_BUMP_TIP = 10e18;
 
-  function setUp() public virtual {
-    // Fork the ObolChain mainnet
-    vm.createSelectFork(vm.rpcUrl(MAINNET_RPC_URL), 22_289_468);
-
-    uint256 _deployerPrivateKey = vm.envOr(
-      "DEPLOYER_PRIVATE_KEY",
-      uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
-    );
-    deployer = vm.rememberKey(_deployerPrivateKey);
-
-    // Fund the deployer with some OBOL
-    deal(OBOL_TOKEN_ADDRESS, deployer, DEPLOYER_DEAL_AMOUNT);
-
-    // deploy via script
-    deployScript = new MainnetObolDeploy();
-    deployScript.setUp();
-    (obolStaker, calculator, obolLst, autoDelegate) = deployScript.run();
-  }
+  address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
+  uint256 constant DEPLOYER_DEAL_AMOUNT = (1e18 * 2) + 5_000_000e18;
 
   function _dealStakingToken(address _recipient, uint96 _amount) internal returns (uint96) {
     // Bound amount to reasonable values
