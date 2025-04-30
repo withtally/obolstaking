@@ -46,9 +46,7 @@ abstract contract BaseObolDeploy is Script {
     virtual
     returns (GovLst.ConstructorParams memory);
 
-  function _deployRewardNotifiers() internal virtual returns (address[] memory) {
-    return new address[](0);
-  }
+  function _deployRewardNotifiers() internal virtual returns (address[] memory);
 
   function run()
     public
