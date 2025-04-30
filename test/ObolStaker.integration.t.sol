@@ -28,9 +28,9 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint256 _rewardAmount,
     uint256 _percentDuration
   ) public {
-    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
-    vm.assume(_depositor != address(obolStaker));
-    // vm.assume(_depositor != address(obolStaker.surrogates(deployer)));
+    _assumeSafeAddress(_depositor);
+    _assumeSafeAddress(_delegatee);
+
     _amount = _dealStakingToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 0, 100);
@@ -64,9 +64,9 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint256 _eligibilityScore
   ) public {
     vm.skip(true); //TODO: fix this test
-    vm.assume(_depositor != address(0) && _delegatee != address(0));
-    vm.assume(_depositor != address(obolStaker));
-    vm.assume(_depositor != address(obolStaker.surrogates(deployer)));
+    _assumeSafeAddress(_depositor);
+    _assumeSafeAddress(_delegatee);
+
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 0, 100);
     _eligibilityScore = _boundEligibilityScore(_eligibilityScore);
@@ -130,11 +130,9 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint256 _percentDuration,
     uint256 _eligibilityScore
   ) public {
-    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
-    vm.assume(_depositor != address(obolStaker));
-    vm.assume(_depositor != address(obolStaker.surrogates(deployer)));
-    vm.assume(_depositor != address(obolStaker.REWARD_TOKEN()));
-    vm.assume(_delegatee != address(obolStaker.REWARD_TOKEN()));
+    _assumeSafeAddress(_depositor);
+    _assumeSafeAddress(_delegatee);
+
     _amount = _dealStakingToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _withdrawAmount = bound(_withdrawAmount, 0.1e18, _amount);
@@ -166,11 +164,9 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint256 _percentDuration,
     uint256 _eligibilityScore
   ) public {
-    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
-    vm.assume(_depositor != address(obolStaker.REWARD_TOKEN()));
-    vm.assume(_delegatee != address(obolStaker.REWARD_TOKEN()));
-    vm.assume(_depositor != address(obolStaker));
-    vm.assume(_depositor != address(obolStaker.surrogates(deployer)));
+    _assumeSafeAddress(_depositor);
+    _assumeSafeAddress(_delegatee);
+
     _amount = _dealStakingToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 0, 100);
@@ -213,9 +209,9 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint256 _eligibilityScore
   ) public {
     vm.skip(true); //TODO: fix this test
-    vm.assume(_depositor != address(0) && _delegatee != address(0) && _amount != 0);
-    vm.assume(_depositor != address(obolStaker));
-    vm.assume(_depositor != address(obolStaker.surrogates(deployer)));
+    _assumeSafeAddress(_depositor);
+    _assumeSafeAddress(_delegatee);
+
     _amount = _dealStakingToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _withdrawAmount = bound(_withdrawAmount, 0.1e18, _amount);

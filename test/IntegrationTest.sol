@@ -19,6 +19,16 @@ contract IntegrationTest is Test {
   address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
   uint256 constant DEPLOYER_DEAL_AMOUNT = (1e18 * 2) + 5_000_000e18;
 
+  function _assumeSafeAddress(address _address) internal view {
+    vm.assume(_address != address(0));
+    vm.assume(_address != address(obolStaker.REWARD_TOKEN()));
+    vm.assume(_address != address(obolStaker.STAKE_TOKEN()));
+    vm.assume(_address != address(obolStaker));
+    vm.assume(_address != address(autoDelegate));
+    vm.assume(_address != address(obolStaker.surrogates(deployer)));
+    vm.assume(_address != address(obolStaker.surrogates(address(autoDelegate))));
+  }
+
   function _dealStakingToken(address _recipient, uint96 _amount) internal returns (uint96) {
     // Bound amount to reasonable values
     _amount = uint96(bound(_amount, 0.1e18, 1e18));
