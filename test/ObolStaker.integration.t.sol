@@ -259,7 +259,7 @@ contract ObolStakerDeploymentTest is ObolStakerIntegrationTestBase {
     return 22_289_468; // Block height for mainnet before Obol Staker production deployment
   }
 
-  function setUp() public override {
+  function setUp() public virtual override {
     super.setUp();
     uint256 _deployerPrivateKey = vm.envOr(
       "DEPLOYER_PRIVATE_KEY",
