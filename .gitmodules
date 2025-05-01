@@ -4,3 +4,6 @@
 [submodule "lib/stGOV"]
 	path = lib/stGOV
 	url = https://github.com/withtally/stGOV
+[submodule "lib/SingleTokenLockups"]
+	path = lib/SingleTokenLockups
+	url = https://github.com/icemanparachute/SingleTokenLockups
