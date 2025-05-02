@@ -4,6 +4,8 @@
 pragma solidity 0.8.28;
 
 import {Script, console2} from "forge-std/Script.sol";
+import {ObolStaker} from "src/ObolStaker.sol";
+import {RebasingStakedObol} from "src/RebasingStakedObol.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IdentityEarningPowerCalculator} from "staker/calculators/IdentityEarningPowerCalculator.sol";
 import {IERC20Staking} from "staker/interfaces/IERC20Staking.sol";
@@ -34,7 +36,7 @@ contract SepoliaObolDeploy is Base {
     return _calculator;
   }
 
-  function _getStakerConfig() internal view virtual override returns (Base.ObolStakerParams memory) {
+  function _getStakerConfig() public view virtual override returns (Base.ObolStakerParams memory) {
     return Base.ObolStakerParams({
       rewardsToken: fakeObol,
       stakeToken: IERC20Staking(address(fakeObol)),
@@ -59,7 +61,7 @@ contract SepoliaObolDeploy is Base {
   }
 
   function _getLstConfig(address _autoDelegate)
-    internal
+    public
     view
     virtual
     override
@@ -86,14 +88,23 @@ contract SepoliaObolDeploy is Base {
     });
   }
 
-  function run() public override {
+  function run()
+    public
+    override
+    returns (
+      ObolStaker _staker,
+      IEarningPowerCalculator _calculator,
+      RebasingStakedObol _rebasingLst,
+      address _autoDelegate
+    )
+  {
     // Deploy Test OBOL token contract
     vm.broadcast(deployer);
     fakeObol = new ObolTestToken();
     console2.log("Deployed Obol Test Token", address(fakeObol));
 
     // Perform the deployment of the core system
-    super.run();
+    (_staker, _calculator, _rebasingLst, _autoDelegate) = super.run();
 
     // Transfer reward tokens & perform the first notification (testnet only operation)
     vm.broadcast(deployer);
