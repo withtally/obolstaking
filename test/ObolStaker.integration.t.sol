@@ -208,7 +208,6 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint256 _percentDuration,
     uint256 _eligibilityScore
   ) public {
-    vm.skip(true); //TODO: fix this test
     _assumeSafeAddress(_depositor);
     _assumeSafeAddress(_delegatee);
 
@@ -221,12 +220,15 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     vm.startPrank(_depositor);
     IERC20(address(obolStaker.STAKE_TOKEN())).approve(address(obolStaker), _amount);
     ObolStaker.DepositIdentifier _depositId = obolStaker.stake(_amount, _delegatee);
+    uint256 _totalEarningPowerAfterStake = obolStaker.totalEarningPower();
     vm.stopPrank();
 
     _mintTransferAndNotifyReward(_rewardAmount);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
-    uint256 oldStakeBalance = IERC20(address(obolStaker.STAKE_TOKEN())).balanceOf(_depositor);
+    uint256 oldStakeBalance = IERC20(address(obolStaker.STAKE_TOKEN())).balanceOf(
+      address(obolStaker.surrogates(_delegatee))
+    );
     uint256 oldRewardBalance = IERC20(address(obolStaker.REWARD_TOKEN())).balanceOf(_depositor);
 
     vm.startPrank(_depositor);
@@ -234,13 +236,28 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     obolStaker.claimReward(_depositId);
     vm.stopPrank();
 
-    uint256 newStakeBalance = IERC20(address(obolStaker.STAKE_TOKEN())).balanceOf(_depositor);
-    uint256 newRewardBalance = IERC20(address(obolStaker.REWARD_TOKEN())).balanceOf(_depositor);
+    uint256 newStakeBalance = IERC20(address(obolStaker.STAKE_TOKEN())).balanceOf(
+      address(obolStaker.surrogates(_delegatee))
+    );
+    assertEq(oldStakeBalance - newStakeBalance, _withdrawAmount);
 
-    assertEq(newStakeBalance - oldStakeBalance, _withdrawAmount);
-
+    // Calculate expected rewards based on percentage of duration
     uint256 expectedRewards = (_rewardAmount * _percentDuration) / 100;
-    assertLteWithinOnePercent(newRewardBalance - oldRewardBalance, expectedRewards);
+
+    // scale the expected rewards based on the percentage of total earning power
+    //  (which includes StakeToBurn from the LST deploy)
+    if (expectedRewards > 0) {
+      expectedRewards =
+        ((expectedRewards * (_amount * 100) / _totalEarningPowerAfterStake) / 100) + 1;
+    }
+
+    // Because STAKE_TOKEN and REWARD_TOKEN are the same (OBOL_TOKEN), the STAKE_TOKEN withdrawn to
+    // the depositor address, the balance of the REWARD_TOKEN in the depositor address is also
+    // increased.
+    uint256 newRewardBalance = IERC20(address(obolStaker.REWARD_TOKEN())).balanceOf(_depositor);
+    assertLteWithinOnePercent(
+      newRewardBalance - oldRewardBalance - _withdrawAmount, expectedRewards
+    );
     assertEq(obolStaker.unclaimedReward(_depositId), 0);
   }
 }
