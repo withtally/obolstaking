@@ -60,8 +60,7 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint96 _additionalAmount,
     address _delegatee,
     uint256 _rewardAmount,
-    uint256 _percentDuration,
-    uint256 _eligibilityScore
+    uint256 _percentDuration
   ) public {
     vm.skip(true); //TODO: fix this test
     _assumeSafeAddress(_depositor);
@@ -69,7 +68,6 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
 
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 0, 100);
-    _eligibilityScore = _boundEligibilityScore(_eligibilityScore);
 
     // Only deal the initial amount first
     _initialAmount = _dealStakingToken(_depositor, _initialAmount);
@@ -127,8 +125,7 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     address _delegatee,
     uint256 _rewardAmount,
     uint256 _withdrawAmount,
-    uint256 _percentDuration,
-    uint256 _eligibilityScore
+    uint256 _percentDuration
   ) public {
     _assumeSafeAddress(_depositor);
     _assumeSafeAddress(_delegatee);
@@ -137,7 +134,6 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _withdrawAmount = bound(_withdrawAmount, 0.1e18, _amount);
     _percentDuration = bound(_percentDuration, 0, 100);
-    _eligibilityScore = _boundEligibilityScore(_eligibilityScore);
 
     vm.startPrank(_depositor);
     IERC20(address(obolStaker.STAKE_TOKEN())).approve(address(obolStaker), _amount);
@@ -161,8 +157,7 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     uint96 _amount,
     address _delegatee,
     uint256 _rewardAmount,
-    uint256 _percentDuration,
-    uint256 _eligibilityScore
+    uint256 _percentDuration
   ) public {
     _assumeSafeAddress(_depositor);
     _assumeSafeAddress(_delegatee);
@@ -170,7 +165,6 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     _amount = _dealStakingToken(_depositor, _amount);
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _percentDuration = bound(_percentDuration, 0, 100);
-    _eligibilityScore = _boundEligibilityScore(_eligibilityScore);
 
     vm.startPrank(_depositor);
     IERC20(address(obolStaker.STAKE_TOKEN())).approve(address(obolStaker), _amount);
@@ -205,8 +199,7 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     address _delegatee,
     uint256 _rewardAmount,
     uint256 _withdrawAmount,
-    uint256 _percentDuration,
-    uint256 _eligibilityScore
+    uint256 _percentDuration
   ) public {
     _assumeSafeAddress(_depositor);
     _assumeSafeAddress(_delegatee);
@@ -215,7 +208,6 @@ abstract contract ObolStakerIntegrationTestBase is IntegrationTest, PercentAsser
     _rewardAmount = _boundToRealisticReward(_rewardAmount);
     _withdrawAmount = bound(_withdrawAmount, 0.1e18, _amount);
     _percentDuration = bound(_percentDuration, 0, 100);
-    _eligibilityScore = _boundEligibilityScore(_eligibilityScore);
 
     vm.startPrank(_depositor);
     IERC20(address(obolStaker.STAKE_TOKEN())).approve(address(obolStaker), _amount);
