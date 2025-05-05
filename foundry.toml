@@ -1,5 +1,6 @@
 [profile.default]
   evm_version = "cancun"
+  fs_permissions = [{ access = "read", path = "./script/obol-delegatees.json" }]
   optimizer = true
   #optimizer_runs = 833
   optimizer_runs = 200
