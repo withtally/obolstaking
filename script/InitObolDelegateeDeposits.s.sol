@@ -13,7 +13,7 @@ contract InitObolDelegateeDeposits is InitDelegateeDeposits {
   function filePath() public view virtual override returns (string memory) {
     // A list of all existing OBOL delegatees who have at least two addresses delegating
     // voting weight to them.
-    return string.concat(vm.projectRoot(), "script/obol-delegatees.json");
+    return string.concat(vm.projectRoot(), "/script/obol-delegatees.json");
   }
 
   function getGovLst() public virtual override returns (GovLst) {
@@ -21,7 +21,7 @@ contract InitObolDelegateeDeposits is InitDelegateeDeposits {
   }
 
   function multicallBatchSize() public pure virtual override returns (uint256) {
-    return 1;
+    return 50;
   }
 
   function run() public virtual override {
