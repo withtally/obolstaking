@@ -72,9 +72,12 @@ contract ClaimAndDistributeRewards is Script {
       return;
     }
 
-    vm.startBroadcast(deployer);
-    obol.approve(address(rLst), type(uint256).max);
+    if (obol.allowance(deployer, address(rLst)) < payoutAmount) {
+        vm.broadcast(deployer);
+        obol.approve(address(rLst), type(uint256).max);
+    }
+
+    vm.broadcast(deployer);
     rLst.claimAndDistributeReward(deployer, payoutAmount, deposits);
-    vm.stopBroadcast();
   }
 }
