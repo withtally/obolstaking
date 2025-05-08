@@ -46,6 +46,12 @@ contract ClaimAndDistributeRewards is Script {
       uint256 _unclaimedRewards = staker.unclaimedReward(_depositId);
       if (_unclaimedRewards == 0) continue;
 
+      // Adding this deposit would make it too profitable, we'll just keep looking instead
+      if ((_rewardsSum + _unclaimedRewards) > (payoutAmount + maxProfit)) {
+        console2.log("Skipping Deposit To Avoid Over Profitability", _id);
+        continue;
+      }
+
       _rewardsSum += _unclaimedRewards;
       deposits.push(_depositId);
       if (_rewardsSum > payoutAmount) break;
@@ -53,7 +59,7 @@ contract ClaimAndDistributeRewards is Script {
 
     console2.log("Payout Amount", payoutAmount);
     console2.log("Checked up to Deposit", _id);
-    console2.log("Number of Deposits with Rewards", deposits.length);
+    console2.log("Number of Deposits to Claim", deposits.length);
     console2.log("Claimable Rewards", _rewardsSum);
 
     if (_rewardsSum > (payoutAmount + maxProfit)) {
