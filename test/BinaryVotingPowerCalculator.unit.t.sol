@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockVotingPowerToken} from "test/mocks/MockVotingPowerToken.sol";
 
 import {MockEligibilityModule} from "test/mocks/MockEligibilityModule.sol";
@@ -58,10 +59,6 @@ contract BinaryVotingPowerCalculatorTest is Test {
     vm.assume(_delegate != address(0));
   }
 
-  function _assumeSafeVotingPower(uint256 _votingPower) internal pure {
-    vm.assume(_votingPower != 0);
-  }
-
   function _setOracleAsAvailable() internal {
     mockEligibilityModule.__setMockIsOraclePaused(false);
     mockEligibilityModule.__setMockIsOracleStale(false);
@@ -73,6 +70,82 @@ contract BinaryVotingPowerCalculatorTest is Test {
 
   function _setOracleAsUnavailableAsOracleStale() internal {
     mockEligibilityModule.__setMockIsOracleStale(true);
+  }
+
+  function _setVotingPowerForDelegate(address _delegate, uint256 _votingPower) internal {
+    mockVotingPowerToken.__setMockBalanceOf(_delegate, _votingPower);
+  }
+
+  function _setDelegateeAsEligibleWithVotingPower(address _delegate, uint256 _votingPower) internal {
+    _assumeSafeDelegate(_delegate);
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegate, true);
+
+    _setVotingPowerForDelegate(_delegate, _votingPower);
+  }
+
+  function _setDelegateeAsNotEligibleWithVotingPower(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _assumeSafeDelegate(_delegate);
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegate, false);
+
+    _setVotingPowerForDelegate(_delegate, _votingPower);
+  }
+
+  function _setOracleIsAvailableAndDelegateIsEligible(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _setOracleAsAvailable();
+    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsAvailableAndDelegateIsNotEligible(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _setOracleAsAvailable();
+    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsPausedAndDelegateIsEligible(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _setOracleAsUnavailableAsOraclePaused();
+    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsStaleAndDelegateIsEligible(address _delegate, uint256 _votingPower) internal {
+    _setOracleAsUnavailableAsOracleStale();
+    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsUnavailableAsOracleStaleAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) internal {
+    _setOracleAsUnavailableAsOracleStale();
+    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsUnavailableAndDelegateIsNotEligible(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _setOracleAsUnavailableAsOraclePaused();
+    _setOracleAsUnavailableAsOracleStale();
+    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsPausedAndDelegateIsNotEligible(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _setOracleAsUnavailableAsOraclePaused();
+    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
+  }
+
+  function _setOracleIsStaleAndDelegateIsNotEligible(address _delegate, uint256 _votingPower)
+    internal
+  {
+    _setOracleAsUnavailableAsOracleStale();
+    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
   }
 }
 
@@ -196,6 +269,175 @@ contract Constructor is BinaryVotingPowerCalculatorTest {
         .selector
     );
     new BinaryVotingPowerCalculator(_owner, _eligibilityModule, _votingPowerToken, 0);
+  }
+}
+
+contract GetEarningPower is BinaryVotingPowerCalculatorTest {
+  /// @dev Oracle is available && delegate IS eligible → return sqrt(votingPower)
+  function testFuzz_ReturnsVotingPowerIfOracleIsAvailableAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) public {
+    _setOracleIsAvailableAndDelegateIsEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+
+    assertEq(calculator.getEarningPower(0, _delegate, address(0)), _expectedVotingPower);
+  }
+
+  /// @dev Oracle is paused && delegate IS eligible → return sqrt(votingPower)
+  function testFuzz_ReturnsVotingPowerIfOracleIsPausedAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) public {
+    _setOracleIsPausedAndDelegateIsEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+
+    assertEq(calculator.getEarningPower(0, _delegate, address(0)), _expectedVotingPower);
+  }
+
+  /// @dev Oracle is stale && delegate IS eligible → return sqrt(votingPower)
+  function testFuzz_ReturnsVotingPowerIfOracleIsStaleAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) public {
+    _setOracleIsUnavailableAsOracleStaleAndDelegateIsEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+
+    assertEq(calculator.getEarningPower(0, _delegate, address(0)), _expectedVotingPower);
+  }
+
+  /// @dev Oracle is paused && delegate IS NOT eligible → return sqrt(votingPower)
+  function testFuzz_ReturnsVotingPowerIfOracleIsPausedAndDelegateIsNotEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) public {
+    _setOracleIsUnavailableAndDelegateIsNotEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+
+    assertEq(calculator.getEarningPower(0, _delegate, address(0)), _expectedVotingPower);
+  }
+
+  /// @dev Oracle is stale && delegate IS NOT eligible → return sqrt(votingPower)
+  function testFuzz_ReturnsVotingPowerIfOracleIsStaleAndDelegateIsNotEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) public {
+    _setOracleIsStaleAndDelegateIsNotEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+
+    assertEq(calculator.getEarningPower(0, _delegate, address(0)), _expectedVotingPower);
+  }
+
+  /// @dev Oracle is available && delegate IS NOT eligible → return 0
+  function testFuzz_ReturnsZeroIfOracleIsAvailableAndDelegateIsNotEligible(
+    address _delegate,
+    uint256 _votingPower
+  ) public {
+    _setOracleIsAvailableAndDelegateIsNotEligible(_delegate, _votingPower);
+
+    assertEq(calculator.getEarningPower(0, _delegate, address(0)), 0);
+  }
+}
+
+contract GetNewEarningPower is BinaryVotingPowerCalculatorTest {
+  /// @dev Oracle is available && delegate IS eligible → return (sqrt(votingPower), true)
+  function testFuzz_ReturnsVotingPowerAndTrueIfOracleIsAvailableAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _oldEarningPower
+  ) public {
+    _setOracleIsAvailableAndDelegateIsEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
+      calculator.getNewEarningPower(0, _delegate, address(0), _oldEarningPower);
+
+    assertEq(_actualVotingPower, _expectedVotingPower);
+    assertTrue(_isQualifiedForBump);
+  }
+
+  /// @dev Oracle is paused && delegate IS eligible → return (sqrt(votingPower), true)
+  function testFuzz_ReturnsVotingPowerAndTrueIfOracleIsPausedAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _oldEarningPower
+  ) public {
+    _setOracleIsPausedAndDelegateIsEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
+      calculator.getNewEarningPower(0, _delegate, address(0), _oldEarningPower);
+
+    assertEq(_actualVotingPower, _expectedVotingPower);
+    assertTrue(_isQualifiedForBump);
+  }
+
+  /// @dev Oracle is stale && delegate IS eligible → return (sqrt(votingPower), true)
+  function testFuzz_ReturnsVotingPowerAndTrueIfOracleIsStaleAndDelegateIsEligible(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _oldEarningPower
+  ) public {
+    _setOracleIsStaleAndDelegateIsEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
+      calculator.getNewEarningPower(0, _delegate, address(0), _oldEarningPower);
+
+    assertEq(_actualVotingPower, _expectedVotingPower);
+    assertTrue(_isQualifiedForBump);
+  }
+
+  /// @dev Oracle is available && delegate IS NOT eligible → return (0, true)
+  function testFuzz_ReturnsZeroAndTrueIfOracleIsAvailableAndDelegateIsNotEligible(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _oldEarningPower
+  ) public {
+    _setOracleIsAvailableAndDelegateIsNotEligible(_delegate, _votingPower);
+
+    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
+      calculator.getNewEarningPower(0, _delegate, address(0), _oldEarningPower);
+
+    assertEq(_actualVotingPower, 0);
+    assertTrue(_isQualifiedForBump);
+  }
+
+  /// @dev Oracle is paused && delegate IS NOT eligible → return (sqrt(votingPower), true)
+  function testFuzz_ReturnsVotingPowerAndTrueIfOracleIsPausedAndDelegateIsNotEligible(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _oldEarningPower
+  ) public {
+    _setOracleIsPausedAndDelegateIsNotEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
+      calculator.getNewEarningPower(0, _delegate, address(0), _oldEarningPower);
+
+    assertEq(_actualVotingPower, _expectedVotingPower);
+    assertTrue(_isQualifiedForBump);
+  }
+
+  /// @dev Oracle is stale && delegate IS NOT eligible → return (sqrt(votingPower), true)
+  function testFuzz_ReturnsVotingPowerAndTrueIfOracleIsStaleAndDelegateIsNotEligible(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _oldEarningPower
+  ) public {
+    _setOracleIsStaleAndDelegateIsNotEligible(_delegate, _votingPower);
+
+    uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
+    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
+      calculator.getNewEarningPower(0, _delegate, address(0), _oldEarningPower);
+
+    assertEq(_actualVotingPower, _expectedVotingPower);
+    assertTrue(_isQualifiedForBump);
   }
 }
 
