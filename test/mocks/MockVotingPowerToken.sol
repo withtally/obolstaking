@@ -11,14 +11,6 @@ contract MockVotingPowerToken {
   /// @notice Mapping to store past votes for testing
   mapping(address => mapping(uint256 => uint256)) private _pastVotes;
 
-  /// @notice Set past votes for a specific account and timepoint
-  /// @param account The account address
-  /// @param timepoint The timepoint
-  /// @param votes The number of votes to set
-  function setPastVotes(address account, uint256 timepoint, uint256 votes) external {
-    _pastVotes[account][timepoint] = votes;
-  }
-
   /// @notice Get past votes for an account at a specific timepoint
   /// @param account The account address
   /// @param timepoint The timepoint
@@ -36,10 +28,18 @@ contract MockVotingPowerToken {
     return _balances[account];
   }
 
+  /// @notice Set past votes for a specific account and timepoint
+  /// @param account The account address
+  /// @param timepoint The timepoint
+  /// @param votes The number of votes to set
+  function __setMockPastVotes(address account, uint256 timepoint, uint256 votes) external {
+    _pastVotes[account][timepoint] = votes;
+  }
+
   /// @notice Set the balance of an account
   /// @param account The account address
   /// @param balance The balance to set
-  function setBalanceOf(address account, uint256 balance) external {
+  function __setMockBalanceOf(address account, uint256 balance) external {
     _balances[account] = balance;
   }
 }
