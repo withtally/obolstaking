@@ -116,7 +116,7 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     assertEq(_calculator.SNAPSHOT_START_BLOCK(), uint48(block.number));
   }
 
-  function testFuzz_EmitsEligibilityModuleSetEvent(
+  function testFuzz_EmitsOracleEligibilityModuleSetEvent(
     address _owner,
     address _votingPowerToken,
     uint48 _votingPowerUpdateInterval,
@@ -127,7 +127,7 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     );
 
     vm.expectEmit();
-    emit BinaryVotingPowerEarningPowerCalculator.EligibilityModuleSet(
+    emit BinaryVotingPowerEarningPowerCalculator.OracleEligibilityModuleSet(
       address(0), _oracleEligibilityModule
     );
     new BinaryVotingPowerEarningPowerCalculator(
@@ -427,29 +427,29 @@ contract GetNewEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
 contract SetOracleEligibilityModule is BinaryVotingPowerEarningPowerCalculatorTest {
   function testFuzz_SetsOracleEligibilityModule(address _oracleEligibilityModule) public {
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
-    vm.assume(_oracleEligibilityModule != address(calculator.oracleEligibilityModule()));
 
     vm.prank(owner);
     calculator.setOracleEligibilityModule(_oracleEligibilityModule);
     assertEq(address(calculator.oracleEligibilityModule()), _oracleEligibilityModule);
   }
 
-  function testFuzz_EmitsEligibilityModuleSetEvent(address _oracleEligibilityModule) public {
+  function testFuzz_EmitsOracleEligibilityModuleSetEvent(address _oracleEligibilityModule) public {
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
-    vm.assume(_oracleEligibilityModule != address(calculator.oracleEligibilityModule()));
 
     vm.expectEmit();
-    emit BinaryVotingPowerEarningPowerCalculator.EligibilityModuleSet(
+    emit BinaryVotingPowerEarningPowerCalculator.OracleEligibilityModuleSet(
       address(calculator.oracleEligibilityModule()), _oracleEligibilityModule
     );
     vm.prank(owner);
     calculator.setOracleEligibilityModule(_oracleEligibilityModule);
   }
 
-  function testFuzz_RevertIf_CallerIsNotOwner(address _oracleEligibilityModule) public {
-    address notOwner = makeAddr("notOwner");
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
-    vm.prank(notOwner);
+  function testFuzz_RevertIf_CallerIsNotOwner(address _oracleEligibilityModule, address _caller)
+    public
+  {
+    vm.assume(_caller != owner);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
+    vm.prank(_caller);
     calculator.setOracleEligibilityModule(_oracleEligibilityModule);
   }
 }
@@ -478,10 +478,12 @@ contract SetVotingPowerUpdateInterval is BinaryVotingPowerEarningPowerCalculator
     calculator.setVotingPowerUpdateInterval(_votingPowerUpdateInterval);
   }
 
-  function testFuzz_RevertIf_CallerIsNotOwner(uint48 _votingPowerUpdateInterval) public {
-    address notOwner = makeAddr("notOwner");
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
-    vm.prank(notOwner);
+  function testFuzz_RevertIf_CallerIsNotOwner(uint48 _votingPowerUpdateInterval, address _caller)
+    public
+  {
+    vm.assume(_caller != owner);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _caller));
+    vm.prank(_caller);
     calculator.setVotingPowerUpdateInterval(_votingPowerUpdateInterval);
   }
 }
