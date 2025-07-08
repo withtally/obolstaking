@@ -7,15 +7,14 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title DelegateCompensationStaker
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice A specialized staking contract that uses oracle-based earning power calculator to
-/// determine delegate compensation based on their governance participation.
+/// @notice A specialized staking contract that determines and distributes delegate compensation
+/// purely based on earning power.
 /// @dev This contract extends the base Staker to implement a delegate compensation system where
-/// governance delegates earn compensation proportional to their voting activity and governance
-/// participation as determined by an external oracle.
+/// governance delegates earn compensation proportional to their earning power.
 /// @dev Unlike traditional staking, this system:
-/// - Disables user staking methods (stake, withdraw, etc.)
 /// - Creates reward deposits for delegates via initializeDelegateCompensation()
-/// - Uses oracle rather than staked token amounts to determine earning power
+/// - Uses earning power calculator rather than staked token amounts to determine earning power
+/// - Disables user staking methods (stake, withdraw, etc.)
 /// - Distributes compensation proportional to governance participation metrics
 abstract contract DelegateCompensationStaker is Staker {
   using SafeCast for uint256;
@@ -27,7 +26,7 @@ abstract contract DelegateCompensationStaker is Staker {
   /// voting power and eligibility at the time of initialization.
   /// @dev This event is emitted once per delegate when they are first registered in the
   /// delegate compensation system.
-  event DelegateCompensationInitialized(
+  event DelegateCompensation__Initialized(
     address indexed delegate, DepositIdentifier indexed depositId, uint256 earningPower
   );
 
@@ -36,23 +35,31 @@ abstract contract DelegateCompensationStaker is Staker {
   /// @param delegate The address of the delegate for whom initialization was attempted.
   /// @dev This error prevents duplicate deposits for the same delegate, which would corrupt
   /// the accounting system and allow unfair compensation accumulation.
-  error DelegateCompensationAlreadyInitialized(address delegate);
+  error DelegateCompensation__AlreadyInitialized(address delegate);
+
+  /// @notice Thrown when attempting to call a method that is not supported in the delegate
+  /// compensation system.
+  /// @dev This error is used for methods that exist in the parent Staker contract but are
+  /// intentionally disabled in this implementation as they don't apply to the delegate compensation
+  /// model.
+  error DelegateCompensation__MethodNotSupported();
 
   /// @notice Tracks whether a delegate has already been initialized for compensation.
   mapping(address delegate => bool isInitialized) public delegateInitialized;
 
   /// @notice Disabled in delegate compensation system.
-  /// @dev This function is not applicable to delegate compensation. Delegates cannot change their
-  /// delegatee as they are their own delegatee in this system.
+  /// @dev This contract uses externally-calculated earning power rather than token staking
+  /// mechanics. Earning power is determined by the earning power calculator based on external
+  /// criteria, not by staked token amounts or delegation.
   function alterDelegatee(Staker.DepositIdentifier, address) public pure override {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system.
   /// @dev Regular staking is not supported. Use initializeDelegateCompensation() instead to
   /// create delegate reward deposits.
   function stake(uint256, address) external pure override returns (Staker.DepositIdentifier) {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system.
@@ -64,35 +71,35 @@ abstract contract DelegateCompensationStaker is Staker {
     override
     returns (Staker.DepositIdentifier)
   {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system.
   /// @dev Delegate deposits cannot be increased as they represent compensation eligibility,
   /// not staked amounts. Earning power updates happen through oracle systems.
   function stakeMore(Staker.DepositIdentifier, uint256) external pure override {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system.
   /// @dev Delegation surrogates are not used in the delegate compensation model as
   /// delegates earn compensation directly without token delegation mechanics.
   function surrogates(address) public pure override returns (DelegationSurrogate) {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system.
   /// @dev Delegate reward deposits cannot be withdrawn as they don't represent staked
   /// tokens. Delegates can only claim accumulated compensation.
   function withdraw(Staker.DepositIdentifier, uint256) public pure override {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system.
   /// @dev Delegation surrogates are not used in the delegate compensation model as
   /// delegates earn compensation directly without token delegation mechanics.
   function _fetchOrDeploySurrogate(address) internal pure override returns (DelegationSurrogate) {
-    revert();
+    revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Initializes a reward deposit for a delegate in the compensation system.
@@ -111,9 +118,9 @@ abstract contract DelegateCompensationStaker is Staker {
     virtual
     returns (DepositIdentifier)
   {
-    _checkpointGlobalReward();
+    if (delegateInitialized[_delegate]) revert DelegateCompensation__AlreadyInitialized(_delegate);
 
-    if (delegateInitialized[_delegate]) revert DelegateCompensationAlreadyInitialized(_delegate);
+    _checkpointGlobalReward();
 
     DepositIdentifier _depositId = _useDepositId();
     uint256 _earningPower = earningPowerCalculator.getEarningPower(0, _delegate, _delegate);
@@ -133,7 +140,7 @@ abstract contract DelegateCompensationStaker is Staker {
 
     delegateInitialized[_delegate] = true;
 
-    emit DelegateCompensationInitialized(_delegate, _depositId, _earningPower);
+    emit DelegateCompensation__Initialized(_delegate, _depositId, _earningPower);
     return _depositId;
   }
 }
