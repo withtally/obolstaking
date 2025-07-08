@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IEligibilityModule} from "src/interfaces/IEligibilityModule.sol";
-import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
+import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 
-/// @title BinaryVotingPowerCalculator
+/// @title BinaryVotingPowerEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice Calculates earning power based on voting power snapshots and binary eligibility.
 /// @dev This contract calculates earning power using snapshot-based voting power
@@ -18,7 +18,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 ///      Eligibility is evaluated only at the snapshot interval boundaries, not in real time.
 ///      Systems integrating this contract may apply bumping logic to compensate
 ///      delegates who were temporarily penalized due to oracle delays or instability.
-contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
+contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalculator {
   /*///////////////////////////////////////////////////////////////
                           Events
   //////////////////////////////////////////////////////////////*/
@@ -42,10 +42,10 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
   //////////////////////////////////////////////////////////////*/
 
   /// @notice Thrown when an invalid address is provided.
-  error BinaryVotingPowerCalculator__InvalidAddress();
+  error BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
 
   /// @notice Thrown when an invalid voting power update interval is provided.
-  error BinaryVotingPowerCalculator__InvalidVotingPowerUpdateInterval();
+  error BinaryVotingPowerEarningPowerCalculator__InvalidVotingPowerUpdateInterval();
 
   /*///////////////////////////////////////////////////////////////
                         Immutable Storage
@@ -64,30 +64,33 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
   /// @notice The time interval after which the voting power is updated.
   uint48 public votingPowerUpdateInterval;
 
-  /// @notice The eligibility module that determines if a delegate qualifies for earning power.
-  IEligibilityModule public eligibilityModule;
+  /// @notice The oracle eligibility module that determines if a delegate qualifies for earning
+  /// power.
+  IOracleEligibilityModule public oracleEligibilityModule;
 
   /*///////////////////////////////////////////////////////////////
                             Constructor
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Initializes the BinaryVotingPowerCalculator.
+  /// @notice Initializes the BinaryVotingPowerEarningPowerCalculator.
   /// @param _owner The owner of the contract.
-  /// @param _eligibilityModule The eligibility module address.
+  /// @param _oracleEligibilityModule The oracle eligibility module address.
   /// @param _votingPowerToken The voting power token address.
   /// @param _votingPowerUpdateInterval The voting power update interval.
   constructor(
     address _owner,
-    address _eligibilityModule,
+    address _oracleEligibilityModule,
     address _votingPowerToken,
     uint48 _votingPowerUpdateInterval
   ) Ownable(_owner) {
-    if (_votingPowerToken == address(0)) revert BinaryVotingPowerCalculator__InvalidAddress();
+    if (_votingPowerToken == address(0)) {
+      revert BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
+    }
 
     VOTING_POWER_TOKEN = _votingPowerToken;
     SNAPSHOT_START_BLOCK = uint48(block.number);
 
-    _setEligibilityModule(_eligibilityModule);
+    _setOracleEligibilityModule(_oracleEligibilityModule);
     _setVotingPowerUpdateInterval(_votingPowerUpdateInterval);
   }
 
@@ -96,7 +99,7 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
   //////////////////////////////////////////////////////////////*/
 
   /// @notice Gets the earning power of a voter.
-  /// @param _staker The address who's voting power is being calculated.
+  /// @param _staker The address whose voting power is being calculated.
   /// @return _votingPower The voting power of the voter.
   /// @dev This function uses the voter's snapshot voting power at the most recent
   ///      voting power update interval, and returns zero if the delegatee is
@@ -107,11 +110,11 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
     view
     returns (uint256 _votingPower)
   {
-    _votingPower = _getEffectiveVotingPower(_staker);
+    _votingPower = _getEarningPower(_staker);
   }
 
   /// @notice Gets the new earning power of a voter.
-  /// @param _staker The address who's voting power is being calculated.
+  /// @param _staker The address whose voting power is being calculated.
   /// @return _votingPower The voting power of the voter.
   /// @return _isQualifiedForBump Whether the voter is qualified for a bump.
   /// @dev This function uses the voter's snapshot voting power at the most recent
@@ -124,7 +127,7 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
     address, /* _delegatee */
     uint256 /* _oldEarningPower */
   ) external view returns (uint256 _votingPower, bool _isQualifiedForBump) {
-    _votingPower = _getEffectiveVotingPower(_staker);
+    _votingPower = _getEarningPower(_staker);
     _isQualifiedForBump = true;
   }
 
@@ -132,11 +135,11 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
                         External Functions
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Sets the eligibility module.
-  /// @param _newEligibilityModule The new eligibility module address.
-  function setEligibilityModule(address _newEligibilityModule) external {
+  /// @notice Sets the oracle eligibility module.
+  /// @param _newOracleEligibilityModule The new oracle eligibility module address.
+  function setOracleEligibilityModule(address _newOracleEligibilityModule) external {
     _checkOwner();
-    _setEligibilityModule(_newEligibilityModule);
+    _setOracleEligibilityModule(_newOracleEligibilityModule);
   }
 
   /// @notice Sets the voting power update interval.
@@ -153,7 +156,7 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
   /// @notice Checks if the oracle is stale or paused.
   /// @return bool True if the oracle is stale or paused, false otherwise.
   function _isOracleUnavailable() internal view returns (bool) {
-    return eligibilityModule.isOraclePaused() || eligibilityModule.isOracleStale();
+    return oracleEligibilityModule.isOraclePaused() || oracleEligibilityModule.isOracleStale();
   }
 
   /// @notice Gets the current voting power snapshot block number.
@@ -172,13 +175,13 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
     return Math.sqrt(IVotes(VOTING_POWER_TOKEN).getPastVotes(_delegatee, _getSnapshotBlock()));
   }
 
-  /// @notice Gets the effective voting power of a delegate.
+  /// @notice Gets the earning power of a delegate.
   /// @param _delegatee The address of the delegate to query.
-  /// @return uint256 The effective voting power of the delegate.
-  /// @dev This function returns the voting power of the delegate at the most recent snapshot block
+  /// @return uint256 The earning power of the delegate.
+  /// @dev This function returns the earning power of the delegate at the most recent snapshot block
   ///      if the oracle is unavailable or the delegate is eligible. Otherwise, it returns 0.
-  function _getEffectiveVotingPower(address _delegatee) internal view returns (uint256) {
-    if (_isOracleUnavailable() || eligibilityModule.isDelegateeEligible(_delegatee)) {
+  function _getEarningPower(address _delegatee) internal view returns (uint256) {
+    if (_isOracleUnavailable() || oracleEligibilityModule.isDelegateeEligible(_delegatee)) {
       return _getSnapshotVotes(_delegatee);
     }
 
@@ -189,17 +192,19 @@ contract BinaryVotingPowerCalculator is Ownable, IEarningPowerCalculator {
   /// @param _newVotingPowerUpdateInterval The new voting power update interval.
   function _setVotingPowerUpdateInterval(uint48 _newVotingPowerUpdateInterval) internal {
     if (_newVotingPowerUpdateInterval == 0) {
-      revert BinaryVotingPowerCalculator__InvalidVotingPowerUpdateInterval();
+      revert BinaryVotingPowerEarningPowerCalculator__InvalidVotingPowerUpdateInterval();
     }
     emit VotingPowerUpdateIntervalSet(votingPowerUpdateInterval, _newVotingPowerUpdateInterval);
     votingPowerUpdateInterval = _newVotingPowerUpdateInterval;
   }
 
-  /// @notice Sets the eligibility module.
-  /// @param _newEligibilityModule The new eligibility module address.
-  function _setEligibilityModule(address _newEligibilityModule) internal {
-    if (_newEligibilityModule == address(0)) revert BinaryVotingPowerCalculator__InvalidAddress();
-    emit EligibilityModuleSet(address(eligibilityModule), _newEligibilityModule);
-    eligibilityModule = IEligibilityModule(_newEligibilityModule);
+  /// @notice Sets the oracle eligibility module.
+  /// @param _newOracleEligibilityModule The new oracle eligibility module address.
+  function _setOracleEligibilityModule(address _newOracleEligibilityModule) internal {
+    if (_newOracleEligibilityModule == address(0)) {
+      revert BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
+    }
+    emit EligibilityModuleSet(address(oracleEligibilityModule), _newOracleEligibilityModule);
+    oracleEligibilityModule = IOracleEligibilityModule(_newOracleEligibilityModule);
   }
 }

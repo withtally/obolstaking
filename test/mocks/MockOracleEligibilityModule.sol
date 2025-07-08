@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IEligibilityModule} from "src/interfaces/IEligibilityModule.sol";
+import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 
-contract MockEligibilityModule is IEligibilityModule {
+contract MockOracleEligibilityModule is IOracleEligibilityModule {
   /*///////////////////////////////////////////////////////////////
                           Storage
   //////////////////////////////////////////////////////////////*/

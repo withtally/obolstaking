@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-/// @title IEligibilityModule
+/// @title IOracleEligibilityModule
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice Interface for the eligibility module that determines if a delegate eligible for earning
-/// power.
-interface IEligibilityModule {
+/// @notice Interface for the oracle eligibility module that determines if a delegate is eligible
+/// for earning power.
+interface IOracleEligibilityModule {
   /// @notice Returns true if the oracle is paused.
   function isOraclePaused() external view returns (bool);
 
