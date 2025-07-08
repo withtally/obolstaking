@@ -113,7 +113,7 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     assertEq(_calculator.VOTING_POWER_TOKEN(), _votingPowerToken);
     assertEq(_calculator.votingPowerUpdateInterval(), _votingPowerUpdateInterval);
     assertEq(address(_calculator.oracleEligibilityModule()), _oracleEligibilityModule);
-    assertEq(_calculator.SNAPSHOT_START_BLOCK(), uint48(block.number));
+    assertEq(_calculator.SNAPSHOT_START(), uint48(block.number));
   }
 
   function testFuzz_EmitsEligibilityModuleSetEvent(

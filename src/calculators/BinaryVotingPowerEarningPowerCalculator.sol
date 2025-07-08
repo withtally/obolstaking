@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC6372 as IGovernanceClock} from
+  "staker/lib/openzeppelin-contracts/contracts/interfaces/IERC6372.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 
@@ -37,6 +39,11 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
     address indexed oldEligibilityModule, address indexed newEligibilityModule
   );
 
+  /// @notice Emitted when a new governance clock is set.
+  /// @param oldGovernanceClock The old governance clock address.
+  /// @param newGovernanceClock The new governance clock address.
+  event GovernanceClockSet(address indexed oldGovernanceClock, address indexed newGovernanceClock);
+
   /*///////////////////////////////////////////////////////////////
                           Errors
   //////////////////////////////////////////////////////////////*/
@@ -54,8 +61,8 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// @notice The voting power token address.
   address public immutable VOTING_POWER_TOKEN;
 
-  /// @notice The block number at which the voting power update starts.
-  uint48 public immutable SNAPSHOT_START_BLOCK;
+  /// @notice The clock value at which the voting power snapshot begins.
+  uint48 public immutable SNAPSHOT_START;
 
   /*///////////////////////////////////////////////////////////////
                           Storage
@@ -68,6 +75,9 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// power.
   IOracleEligibilityModule public oracleEligibilityModule;
 
+  /// @notice The governance clock that determines the current time.
+  IGovernanceClock public governanceClock;
+
   /*///////////////////////////////////////////////////////////////
                             Constructor
   //////////////////////////////////////////////////////////////*/
@@ -77,21 +87,48 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// @param _oracleEligibilityModule The oracle eligibility module address.
   /// @param _votingPowerToken The voting power token address.
   /// @param _votingPowerUpdateInterval The voting power update interval.
+  /// @param _governanceClock The governance clock address. Set to address(0) to default to
+  /// block.number
   constructor(
     address _owner,
     address _oracleEligibilityModule,
     address _votingPowerToken,
-    uint48 _votingPowerUpdateInterval
+    uint48 _votingPowerUpdateInterval,
+    address _governanceClock
   ) Ownable(_owner) {
     if (_votingPowerToken == address(0)) {
       revert BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
     }
 
-    VOTING_POWER_TOKEN = _votingPowerToken;
-    SNAPSHOT_START_BLOCK = uint48(block.number);
-
     _setOracleEligibilityModule(_oracleEligibilityModule);
     _setVotingPowerUpdateInterval(_votingPowerUpdateInterval);
+    _setGovernanceClock(_governanceClock);
+
+    SNAPSHOT_START = clock();
+    VOTING_POWER_TOKEN = _votingPowerToken;
+  }
+
+  /*///////////////////////////////////////////////////////////////
+              Governance Clock Functions
+  //////////////////////////////////////////////////////////////*/
+
+  /// @notice Returns the current governance clock for this contract.
+  /// @dev If a custom governance clock was provided at deployment, this function delegates to it.
+  ///      Otherwise, it defaults to `block.number`, making the contract compliant with EIP-6372.
+  /// @return currentClock The current clock value (e.g., block number or timestamp).
+  function clock() public view override returns (uint48) {
+    if (governanceClock == IGovernanceClock(address(this))) return uint48(block.number);
+    return governanceClock.clock();
+  }
+
+  /// @notice Describes the clock mode used by this contract, as defined by EIP-6372.
+  /// @dev Returns "mode=blocknumber" if no external governance clock is set,
+  ///      otherwise delegates to the configured `governanceClock`.
+  /// @return mode A string describing the clock mode (e.g., "mode=blocknumber" or
+  /// "mode=timestamp").
+  function CLOCK_MODE() public view override returns (string memory) {
+    if (governanceClock == IGovernanceClock(address(this))) return "mode=blocknumber";
+    return governanceClock.CLOCK_MODE();
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -149,6 +186,18 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
     _setVotingPowerUpdateInterval(_newVotingPowerUpdateInterval);
   }
 
+  /// @notice Sets the governance clock.
+  /// @param _newGovernanceClock The new governance clock address.
+  function setGovernanceClock(address _newGovernanceClock) external {
+    _checkOwner();
+    _setGovernanceClock(_newGovernanceClock);
+  }
+
+  /// @notice Returns the current effective snapshot clock based on the clock and interval.
+  function currentSnapshotClock() external view returns (uint48) {
+    return _getSnapshotClock();
+  }
+
   /*///////////////////////////////////////////////////////////////
                         Internal Functions
   //////////////////////////////////////////////////////////////*/
@@ -159,26 +208,30 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
     return oracleEligibilityModule.isOraclePaused() || oracleEligibilityModule.isOracleStale();
   }
 
-  /// @notice Gets the current voting power snapshot block number.
-  /// @return _snapshotBlock The block number that represents the most recent voting power snapshot.
-  /// @dev The snapshot block is calculated by finding how many complete intervals have passed
-  ///      since the start block and multiplying by the interval.
-  function _getSnapshotBlock() internal view returns (uint48 _snapshotBlock) {
-    uint256 _intervalPassed = (block.number - SNAPSHOT_START_BLOCK) / votingPowerUpdateInterval;
-    _snapshotBlock = uint48(SNAPSHOT_START_BLOCK + _intervalPassed * votingPowerUpdateInterval);
+  /// @notice Gets the current snapshot clock based on the governance clock.
+  /// @return _snapshotClock The clock (e.g., block number or timestamp) representing the most
+  /// recent voting power snapshot.
+  /// @dev The snapshot clock is calculated by finding how many complete intervals have passed
+  ///      since the start clock and multiplying by the interval.
+  function _getSnapshotClock() internal view returns (uint48 _snapshotClock) {
+    uint256 _intervalsElapsed = (clock() - SNAPSHOT_START) / votingPowerUpdateInterval;
+    _snapshotClock = uint48(SNAPSHOT_START + _intervalsElapsed * votingPowerUpdateInterval);
   }
 
-  /// @notice Gets the votes of a delegate at the most recent snapshot block.
   /// @param _delegatee The address of the delegate to query.
-  /// @return uint256 The votes of the delegate at the snapshot block.
+  /// @notice Gets the votes of a delegate at the most recent snapshot clock.
+  /// @return uint256 The votes of the delegate at the snapshot clock.
   function _getSnapshotVotes(address _delegatee) internal view returns (uint256) {
-    return Math.sqrt(IVotes(VOTING_POWER_TOKEN).getPastVotes(_delegatee, _getSnapshotBlock()));
+    // ASK-TEAM: IVotes.getPastVotes expects a block number, so this always uses
+    // block-based snapshots, regardless of the governance clock's mode.
+    // If the clock uses timestamps, this mismatch could lead to incorrect behavior.
+    return Math.sqrt(IVotes(VOTING_POWER_TOKEN).getPastVotes(_delegatee, _getSnapshotClock()));
   }
 
   /// @notice Gets the earning power of a delegate.
   /// @param _delegatee The address of the delegate to query.
   /// @return uint256 The earning power of the delegate.
-  /// @dev This function returns the earning power of the delegate at the most recent snapshot block
+  /// @dev This function returns the earning power of the delegate at the most recent snapshot clock
   ///      if the oracle is unavailable or the delegate is eligible. Otherwise, it returns 0.
   function _getEarningPower(address _delegatee) internal view returns (uint256) {
     if (_isOracleUnavailable() || oracleEligibilityModule.isDelegateeEligible(_delegatee)) {
@@ -206,5 +259,15 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
     }
     emit EligibilityModuleSet(address(oracleEligibilityModule), _newOracleEligibilityModule);
     oracleEligibilityModule = IOracleEligibilityModule(_newOracleEligibilityModule);
+  }
+
+  /// @notice Sets the governance clock.
+  /// @param _newGovernanceClock The new governance clock address.
+  /// @dev If the new governance clock is address(0), the contract will default to using
+  /// block.number as the clock and the address of the contract as the governance clock.
+  function _setGovernanceClock(address _newGovernanceClock) internal {
+    emit GovernanceClockSet(address(governanceClock), _newGovernanceClock);
+    if (_newGovernanceClock == address(0)) governanceClock = IGovernanceClock(address(this));
+    else governanceClock = IGovernanceClock(_newGovernanceClock);
   }
 }
