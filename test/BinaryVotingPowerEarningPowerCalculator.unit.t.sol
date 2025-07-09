@@ -84,6 +84,17 @@ contract BinaryVotingPowerEarningPowerCalculatorTest is Test {
     _setVotingPowerForDelegate(_delegate, _votingPower);
   }
 
+  function _setDelegateeEligibilityWithVotingPower(
+    address _delegate,
+    uint256 _votingPower,
+    bool _eligible
+  ) internal {
+    _assumeSafeDelegate(_delegate);
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegate, _eligible);
+
+    _setVotingPowerForDelegate(_delegate, _votingPower);
+  }
+
   function _setDelegateeAsNotEligibleWithVotingPower(address _delegate, uint256 _votingPower)
     internal
   {
@@ -231,21 +242,14 @@ contract GetEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
     address _delegate,
     uint256 _votingPower,
     uint256 _unusedParam1,
-    address _unusedParam2
+    address _unusedParam2,
+    bool _eligible
   ) public {
     _setOracleAsUnavailableAsOraclePaused();
     _setVotingPowerForDelegate(_delegate, _votingPower);
+    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligible);
 
     uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
-
-    // Test with eligible delegate
-    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
-    assertEq(
-      calculator.getEarningPower(_unusedParam1, _delegate, _unusedParam2), _expectedVotingPower
-    );
-
-    // Test with ineligible delegate
-    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
     assertEq(
       calculator.getEarningPower(_unusedParam1, _delegate, _unusedParam2), _expectedVotingPower
     );
@@ -256,21 +260,16 @@ contract GetEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
     address _delegate,
     uint256 _votingPower,
     uint256 _unusedParam1,
-    address _unusedParam2
+    address _unusedParam2,
+    bool _eligible
   ) public {
     _setOracleAsUnavailableAsOracleStale();
     _setVotingPowerForDelegate(_delegate, _votingPower);
+    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligible);
 
     uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
 
-    // Test with eligible delegate
-    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
-    assertEq(
-      calculator.getEarningPower(_unusedParam1, _delegate, _unusedParam2), _expectedVotingPower
-    );
-
-    // Test with ineligible delegate
-    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
+    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligible);
     assertEq(
       calculator.getEarningPower(_unusedParam1, _delegate, _unusedParam2), _expectedVotingPower
     );
@@ -316,22 +315,14 @@ contract GetNewEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
     uint256 _votingPower,
     uint256 _oldEarningPower,
     uint256 _unusedParam1,
-    address _unusedParam2
+    address _unusedParam2,
+    bool _eligible
   ) public {
     _setOracleAsUnavailableAsOraclePaused();
     _setVotingPowerForDelegate(_delegate, _votingPower);
+    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligible);
 
     uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
-
-    // Test with eligible delegate
-    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
-    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
-      calculator.getNewEarningPower(_unusedParam1, _delegate, _unusedParam2, _oldEarningPower);
-    assertEq(_actualVotingPower, _expectedVotingPower);
-    assertTrue(_isQualifiedForBump);
-
-    // Test with ineligible delegate
-    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
     (uint256 _actualVotingPower2, bool _isQualifiedForBump2) =
       calculator.getNewEarningPower(_unusedParam1, _delegate, _unusedParam2, _oldEarningPower);
     assertEq(_actualVotingPower2, _expectedVotingPower);
@@ -344,22 +335,14 @@ contract GetNewEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
     uint256 _votingPower,
     uint256 _oldEarningPower,
     uint256 _unusedParam1,
-    address _unusedParam2
+    address _unusedParam2,
+    bool _eligible
   ) public {
     _setOracleAsUnavailableAsOracleStale();
     _setVotingPowerForDelegate(_delegate, _votingPower);
+    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligible);
 
     uint256 _expectedVotingPower = uint256(Math.sqrt(_votingPower));
-
-    // Test with eligible delegate
-    _setDelegateeAsEligibleWithVotingPower(_delegate, _votingPower);
-    (uint256 _actualVotingPower, bool _isQualifiedForBump) =
-      calculator.getNewEarningPower(_unusedParam1, _delegate, _unusedParam2, _oldEarningPower);
-    assertEq(_actualVotingPower, _expectedVotingPower);
-    assertTrue(_isQualifiedForBump);
-
-    // Test with ineligible delegate
-    _setDelegateeAsNotEligibleWithVotingPower(_delegate, _votingPower);
     (uint256 _actualVotingPower2, bool _isQualifiedForBump2) =
       calculator.getNewEarningPower(_unusedParam1, _delegate, _unusedParam2, _oldEarningPower);
     assertEq(_actualVotingPower2, _expectedVotingPower);
@@ -418,7 +401,6 @@ contract SetOracleEligibilityModule is BinaryVotingPowerEarningPowerCalculatorTe
 contract SetVotingPowerUpdateInterval is BinaryVotingPowerEarningPowerCalculatorTest {
   function testFuzz_SetsVotingPowerUpdateInterval(uint48 _votingPowerUpdateInterval) public {
     _assumeSafeVotingPowerUpdateInterval(_votingPowerUpdateInterval);
-    vm.assume(_votingPowerUpdateInterval != calculator.votingPowerUpdateInterval());
 
     vm.prank(owner);
     calculator.setVotingPowerUpdateInterval(_votingPowerUpdateInterval);
@@ -429,7 +411,6 @@ contract SetVotingPowerUpdateInterval is BinaryVotingPowerEarningPowerCalculator
     public
   {
     _assumeSafeVotingPowerUpdateInterval(_votingPowerUpdateInterval);
-    vm.assume(_votingPowerUpdateInterval != calculator.votingPowerUpdateInterval());
 
     vm.expectEmit();
     emit BinaryVotingPowerEarningPowerCalculator.VotingPowerUpdateIntervalSet(
