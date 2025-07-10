@@ -12,5 +12,17 @@ contract DelegateCompensationStakerHarness is DelegateCompensationStaker {
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
     address _admin
-  ) Staker(_rewardToken, IERC20(address(0)), _earningPowerCalculator, _maxBumpTip, _admin) {}
+  )
+    DelegateCompensationStaker(
+      _rewardToken,
+      IERC20(address(0)),
+      _earningPowerCalculator,
+      _maxBumpTip,
+      _admin
+    )
+  {}
+
+  function scaledUnclaimedReward(DepositIdentifier _depositId) public view returns (uint256) {
+    return _scaledUnclaimedReward(deposits[_depositId]);
+  }
 }

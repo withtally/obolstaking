@@ -4,6 +4,8 @@ pragma solidity ^0.8.23;
 import {Staker} from "staker/Staker.sol";
 import {DelegationSurrogate} from "staker/DelegationSurrogate.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 
 /// @title DelegateCompensationStaker
 /// @author [ScopeLift](https://scopelift.co)
@@ -45,7 +47,25 @@ abstract contract DelegateCompensationStaker is Staker {
   error DelegateCompensation__MethodNotSupported();
 
   /// @notice Tracks whether a delegate has already been initialized for compensation.
-  mapping(address delegate => bool isInitialized) public delegateInitialized;
+  /// !! Change natspec
+  mapping(address delegate => DepositIdentifier) public delegateDepositId;
+
+  /// @param _rewardToken ERC20 token in which rewards will be denominated.
+  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
+  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
+  /// parameters, the max bump tip, and the reward calculator.
+  constructor(
+    IERC20 _rewardToken,
+    IERC20 _stakeToken,
+    IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) Staker(_rewardToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin) {
+    // !! Explain why this is necessary
+    _useDepositId();
+  }
 
   /// @notice This method is not supported since there is no voting power to delegate.
   function alterDelegatee(DepositIdentifier, address) public pure override {
@@ -101,7 +121,9 @@ abstract contract DelegateCompensationStaker is Staker {
     virtual
     returns (DepositIdentifier)
   {
-    if (delegateInitialized[_delegate]) revert DelegateCompensation__AlreadyInitialized(_delegate);
+    if (DepositIdentifier.unwrap(delegateDepositId[_delegate]) != 0) {
+      revert DelegateCompensation__AlreadyInitialized(_delegate);
+    }
 
     _checkpointGlobalReward();
 
@@ -121,9 +143,17 @@ abstract contract DelegateCompensationStaker is Staker {
       scaledUnclaimedRewardCheckpoint: 0
     });
 
-    delegateInitialized[_delegate] = true;
+    delegateDepositId[_delegate] = _depositId;
 
     emit DelegateCompensation__Initialized(_delegate, _depositId, _earningPower);
     return _depositId;
+  }
+
+  /// @notice Helper function that retrieves the compensation information for a given delegate.
+  /// @param _delegate The address of the delegate to query.
+  /// @return The deposit struct containing all compensation information for the delegate.
+  /// @dev Returns an empty struct if the delegate has not been initialized.
+  function getDelegateCompensation(address _delegate) public view returns (Deposit memory) {
+    return deposits[delegateDepositId[_delegate]];
   }
 }
