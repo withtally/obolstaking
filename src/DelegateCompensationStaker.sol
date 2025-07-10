@@ -49,32 +49,27 @@ abstract contract DelegateCompensationStaker is Staker {
 
   /// @notice Disabled in delegate compensation system. Delegates cannot change their delegatee as
   /// they are their own delegatee in this system.
-  function alterDelegatee(Staker.DepositIdentifier, address) public pure override {
+  function alterDelegatee(DepositIdentifier, address) public pure override {
     revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system. This contract uses the earning power
   /// calculator rather than staking to determine the earning power of a delegate.
   /// @dev Use initializeDelegateCompensation() instead to create delegate reward deposits.
-  function stake(uint256, address) external pure override returns (Staker.DepositIdentifier) {
+  function stake(uint256, address) external pure override returns (DepositIdentifier) {
     revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system. This contract uses the earning power
   /// calculator rather than staking to determine the earning power of a delegate.
   /// @dev Use initializeDelegateCompensation() instead to create delegate reward deposits.
-  function stake(uint256, address, address)
-    external
-    pure
-    override
-    returns (Staker.DepositIdentifier)
-  {
+  function stake(uint256, address, address) external pure override returns (DepositIdentifier) {
     revert DelegateCompensation__MethodNotSupported();
   }
 
   /// @notice Disabled in delegate compensation system. Delegate deposits cannot be increased as
   /// they represent compensation eligibility, not staked amounts.
-  function stakeMore(Staker.DepositIdentifier, uint256) external pure override {
+  function stakeMore(DepositIdentifier, uint256) external pure override {
     revert DelegateCompensation__MethodNotSupported();
   }
 
@@ -87,7 +82,7 @@ abstract contract DelegateCompensationStaker is Staker {
 
   /// @notice Disabled in delegate compensation system. Delegate reward deposits cannot be withdrawn
   /// as they don't represent staked tokens. Delegates can only claim accumulated compensation.
-  function withdraw(Staker.DepositIdentifier, uint256) public pure override {
+  function withdraw(DepositIdentifier, uint256) public pure override {
     revert DelegateCompensation__MethodNotSupported();
   }
 
