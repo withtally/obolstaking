@@ -24,7 +24,6 @@ import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.
 ///      fixed intervals. We rely on the oracle to avoid frequent changes in eligibility,
 ///      as frequent updates would cause earning power to fluctuate and could enable fee
 ///      griefing when integrated with a staker.
-
 contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalculator {
   /*///////////////////////////////////////////////////////////////
                           Events
@@ -110,8 +109,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// @return _earningPower The earning power of the staker.
   /// @dev This function returns the staker's snapshot voting power (square root) if eligible or if
   /// the oracle is unavailable, otherwise returns 0.
-  ///      Voting power is snapshotted at fixed intervals, while eligibility is checked in
-  /// real-time.
+  /// Voting power is snapshotted at fixed intervals, while eligibility is checked in real-time.
   function getEarningPower(uint256, /* _amountStaked */ address _staker, address /* _delegatee */ )
     external
     view
@@ -127,7 +125,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// bump.
   /// @dev This function returns the staker's snapshot voting power (square root) if eligible or if
   /// the oracle is unavailable, otherwise returns 0.
-  ///      The update interval is relied upon to prevent frequent bumping, as earning power can only
+  /// The update interval is relied upon to prevent frequent bumping, as earning power can only
   /// change at each interval.
   function getNewEarningPower(
     uint256, /* _amountStaked */
@@ -184,7 +182,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// @return uint256 The earning power of the staker.
   /// @dev This function returns the staker's snapshot voting power (square root) if eligible or if
   /// the oracle is unavailable, otherwise returns 0.
-  ///      Eligibility is checked in real-time, while voting power is snapshotted at intervals.
+  /// Eligibility is checked in real-time, while voting power is snapshotted at intervals.
   function _getEarningPower(address _delegatee) internal view returns (uint256) {
     if (_isOracleUnavailable() || oracleEligibilityModule.isDelegateeEligible(_delegatee)) {
       return _getSnapshotVotes(_delegatee);
