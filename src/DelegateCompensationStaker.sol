@@ -46,14 +46,17 @@ abstract contract DelegateCompensationStaker is Staker {
   /// model.
   error DelegateCompensation__MethodNotSupported();
 
-  /// @notice Tracks whether a delegate has already been initialized for compensation.
-  /// !! Change natspec
+  /// @notice A mapping from a delegate's address to their unique compensation deposit identifier.
+  /// @dev This allows for efficient lookup of a delegate's deposit information. A return value of 0
+  /// indicates that the delegate is uninitialized.
   mapping(address delegate => DepositIdentifier) public delegateDepositId;
 
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
-  /// @param _stakeToken Delegable governance token which users will stake to earn rewards.
+  /// @param _stakeToken Delegable governance token (unused in delegate compensation but required by
+  /// base Staker).
   /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
   /// earning power for the staker system.
+  /// @param _maxBumpTip The maximum tip that can be paid to a bumper for updating earning power.
   /// @param _admin Address which will have permission to manage reward notifiers, claim fee
   /// parameters, the max bump tip, and the reward calculator.
   constructor(
@@ -63,7 +66,12 @@ abstract contract DelegateCompensationStaker is Staker {
     uint256 _maxBumpTip,
     address _admin
   ) Staker(_rewardToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin) {
-    // !! Explain why this is necessary
+    // Deposit ID `0` serves as the default value in the `delegateDepositId` mapping to indicate
+    // uninitialized delegates. However, the deposit ID counter in the base `Staker` also starts at
+    // `0`. This creates a collision where the first delegate would be assigned deposit ID `0`,
+    // allowing them to bypass the re-initialization check in `initializeDelegateCompensation`. To
+    // prevent this vulnerability, we consume ID `0` upfront to ensure real deposits start from ID
+    // `1`.
     _useDepositId();
   }
 
@@ -149,7 +157,7 @@ abstract contract DelegateCompensationStaker is Staker {
     return _depositId;
   }
 
-  /// @notice Helper function that retrieves the compensation information for a given delegate.
+  /// @notice Retrieves the compensation deposit information for a given delegate.
   /// @param _delegate The address of the delegate to query.
   /// @return The deposit struct containing all compensation information for the delegate.
   /// @dev Returns an empty struct if the delegate has not been initialized.
