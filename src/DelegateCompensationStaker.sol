@@ -7,15 +7,16 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title DelegateCompensationStaker
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice A specialized staking contract that determines and distributes delegate compensation
-/// purely based on earning power.
-/// @dev This contract extends the base Staker to implement a delegate compensation system where
-/// governance delegates earn compensation proportional to their earning power.
-/// @dev Unlike traditional staking, this system:
-/// - Creates reward deposits for delegates via initializeDelegateCompensation()
-/// - Uses earning power calculator rather than staked token amounts to determine earning power
-/// - Disables user staking methods (stake, withdraw, etc.)
-/// - Distributes compensation proportional to governance participation metrics
+/// @notice Manages reward distribution for delegates based on their earning power, which is
+/// determined by an external calculator and is independent of any token staking.
+///
+/// This contract extends the base `Staker` to leverage its compensation distribution mechanics
+/// while disabling all token-staking functionalities. Instead of users staking tokens to create
+/// deposits, this system creates compensation deposits for delegates via
+/// `initializeDelegateCompensation`. A deposit in this context is an internal accounting mechanism
+/// to track a delegate's compensation. As delegates do not stake tokens, standard staking functions
+/// like `stake`, `withdraw`, and `stakeMore` are disabled. Delegates can claim their accumulated
+/// rewards with `claimReward` inherited from `Staker`.
 abstract contract DelegateCompensationStaker is Staker {
   using SafeCast for uint256;
 
@@ -47,48 +48,52 @@ abstract contract DelegateCompensationStaker is Staker {
   /// @notice Tracks whether a delegate has already been initialized for compensation.
   mapping(address delegate => bool isInitialized) public delegateInitialized;
 
-  /// @notice Disabled in delegate compensation system. Delegates cannot change their delegatee as
-  /// they are their own delegatee in this system.
+  /// @notice Disabled in delegate compensation. A delegate's deposit is tied to their own address
+  /// and cannot be delegated to another party.
   function alterDelegatee(DepositIdentifier, address) public pure override {
     revert DelegateCompensation__MethodNotSupported();
   }
 
-  /// @notice Disabled in delegate compensation system. This contract uses the earning power
-  /// calculator rather than staking to determine the earning power of a delegate.
-  /// @dev Use initializeDelegateCompensation() instead to create delegate reward deposits.
+  /// @notice Disabled in delegate compensation. This system does not involve staking tokens.
+  /// @dev Delegate compensation is based on earning power determined by an external calculator, not
+  /// on staked token balances. Use `initializeDelegateCompensation` to initialize a deposit for a
+  /// delegate.
   function stake(uint256, address) external pure override returns (DepositIdentifier) {
     revert DelegateCompensation__MethodNotSupported();
   }
 
-  /// @notice Disabled in delegate compensation system. This contract uses the earning power
-  /// calculator rather than staking to determine the earning power of a delegate.
-  /// @dev Use initializeDelegateCompensation() instead to create delegate reward deposits.
+  /// @notice Disabled in delegate compensation. This system does not involve staking tokens.
+  /// @dev Delegate compensation is based on earning power determined by an external calculator, not
+  /// on staked token balances. Use `initializeDelegateCompensation` to initialize a deposit for a
+  /// delegate.
   function stake(uint256, address, address) external pure override returns (DepositIdentifier) {
     revert DelegateCompensation__MethodNotSupported();
   }
 
-  /// @notice Disabled in delegate compensation system. Delegate deposits cannot be increased as
-  /// they represent compensation eligibility, not staked amounts.
+  /// @notice Disabled in delegate compensation. Deposits represent compensation eligibility and do
+  /// not have a token balance that can be increased. Earning power is determined externally and is
+  /// not affected by staking more tokens.
   function stakeMore(DepositIdentifier, uint256) external pure override {
     revert DelegateCompensation__MethodNotSupported();
   }
 
-  /// @notice Disabled in delegate compensation system. Delegation surrogates are not used in the
-  /// delegate compensation model as delegates earn compensation directly without token delegation
-  /// mechanics.
+  /// @notice Disabled in delegate compensation. This system does not use delegation surrogates.
+  /// Delegates are directly compensated based on their own address and earning power, so
+  /// surrogate contracts for delegation are not applicable.
   function surrogates(address) public pure override returns (DelegationSurrogate) {
     revert DelegateCompensation__MethodNotSupported();
   }
 
-  /// @notice Disabled in delegate compensation system. Delegate reward deposits cannot be withdrawn
-  /// as they don't represent staked tokens. Delegates can only claim accumulated compensation.
+  /// @notice Disabled in delegate compensation. Deposits do not hold staked tokens and thus
+  /// cannot be withdrawn from. Delegates can claim their accumulated rewards via the `claimReward`
+  /// function, but there is no principal to withdraw.
   function withdraw(DepositIdentifier, uint256) public pure override {
     revert DelegateCompensation__MethodNotSupported();
   }
 
-  /// @notice Disabled in delegate compensation system. Delegation surrogates are not used in the
-  /// delegate compensation model as delegates earn compensation directly without token delegation
-  /// mechanics.
+  /// @notice Disabled in delegate compensation. This system does not use delegation surrogates.
+  /// Delegates are directly compensated based on their own address and earning power, so
+  /// surrogate contracts for delegation are not applicable.
   function _fetchOrDeploySurrogate(address) internal pure override returns (DelegationSurrogate) {
     revert DelegateCompensation__MethodNotSupported();
   }
