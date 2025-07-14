@@ -13,12 +13,9 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// This contract extends the base `Staker` to leverage its compensation distribution mechanics
 /// while disabling all staking functionalities. Instead of users staking tokens to create
 /// deposits, this system requires deposits to be initialized via the
-/// `initializeDelegateCompensation`
-/// method. Since deposits do not require stake the standard staking functions like `stake`,
-/// `withdraw`,
-/// and `stakeMore` are disabled. The other funcitonality and methods such as  `claimReward` should
-/// behave
-/// the same way as a standard Staker.
+/// `initializeDelegateCompensation`  method. Since deposits do not require stake the standard
+/// staking functions like `stake`, withdraw`, and `stakeMore` are disabled. The other
+/// funcitonality and methods such as `claimReward` should behave the same way as a standard Staker.
 abstract contract DelegateCompensationStaker is Staker {
   using SafeCast for uint256;
 
