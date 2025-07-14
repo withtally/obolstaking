@@ -14,8 +14,8 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// while disabling all staking functionalities. Instead of users staking tokens to create
 /// deposits, this system requires deposits to be initialized via the
 /// `initializeDelegateCompensation`  method. Since deposits do not require stake the standard
-/// staking functions like `stake`, withdraw`, and `stakeMore` are disabled. The other
-/// funcitonality and methods such as `claimReward` should behave the same way as a standard Staker.
+/// staking functions like `stake`, `withdraw`, and `stakeMore` are disabled. The other
+/// functionality and methods such as `claimReward` should behave the same way as a standard Staker.
 abstract contract DelegateCompensationStaker is Staker {
   using SafeCast for uint256;
 
@@ -92,9 +92,9 @@ abstract contract DelegateCompensationStaker is Staker {
   /// @dev This function creates a deposit entry for a delegate to start earning compensation
   /// based on their governance participation. The initial earning power is determined by
   /// the earning power calculator at the time of initialization.
-  /// @dev Unlike regular staking deposit, delegate compensation deposit:
-  /// - Has zero token balance (no actual staking required)
-  /// - Uses the delegate as owner, claimer, and delegatee
+  /// @dev Unlike regular staking deposits, delegate compensation deposits:
+  /// - Have a zero token balance (no actual staking required)
+  /// - Use the delegate as owner, claimer, and delegatee
   /// @dev Each delegate can only be initialized once to prevent duplicate compensation tracking.
   function initializeDelegateCompensation(address _delegate)
     external
