@@ -18,7 +18,7 @@ import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator
 /// `initializeDelegateCompensation`  method. Since deposits do not require stake the standard
 /// staking functions like `stake`, `withdraw`, and `stakeMore` are disabled. The other
 /// functionality and methods such as `claimReward` should behave the same way as a standard Staker.
-abstract contract DelegateCompensationStaker is Staker {
+contract DelegateCompensationStaker is Staker {
   using SafeCast for uint256;
 
   /// @notice Emitted when a delegate's reward deposit is successfully initialized.
@@ -52,8 +52,6 @@ abstract contract DelegateCompensationStaker is Staker {
   mapping(address delegate => DepositIdentifier) public delegateDepositId;
 
   /// @param _rewardToken ERC20 token in which rewards will be denominated.
-  /// @param _stakeToken Delegable governance token (unused in delegate compensation but required by
-  /// base Staker).
   /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
   /// earning power for the staker system.
   /// @param _maxBumpTip The maximum tip that can be paid to a bumper for updating earning power.
@@ -61,11 +59,10 @@ abstract contract DelegateCompensationStaker is Staker {
   /// parameters, the max bump tip, and the reward calculator.
   constructor(
     IERC20 _rewardToken,
-    IERC20 _stakeToken,
     IEarningPowerCalculator _earningPowerCalculator,
     uint256 _maxBumpTip,
     address _admin
-  ) Staker(_rewardToken, _stakeToken, _earningPowerCalculator, _maxBumpTip, _admin) {
+  ) Staker(_rewardToken, IERC20(address(0)), _earningPowerCalculator, _maxBumpTip, _admin) {
     // Deposit ID `0` serves as the default value in the `delegateDepositId` mapping to indicate
     // uninitialized delegates. However, the deposit ID counter in the base `Staker` also starts at
     // `0`. This creates a collision where the first delegate would be assigned deposit ID `0`,
