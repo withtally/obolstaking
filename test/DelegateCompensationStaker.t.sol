@@ -17,10 +17,7 @@ contract InitializeDelegateCompensation is DelegateCompensationStakerTest {
 
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
 
-    assertEq(
-      Staker.DepositIdentifier.unwrap(staker.delegateDepositId(_delegate)),
-      Staker.DepositIdentifier.unwrap(_depositId)
-    );
+    assertEq(staker.delegateDepositId(_delegate), _depositId);
     assertEq(Staker.DepositIdentifier.unwrap(_depositId), 1);
     assertEq(staker.depositorTotalEarningPower(_delegate), _earningPower);
   }
@@ -43,14 +40,8 @@ contract InitializeDelegateCompensation is DelegateCompensationStakerTest {
     Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
     Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
 
-    assertEq(
-      Staker.DepositIdentifier.unwrap(staker.delegateDepositId(_delegate1)),
-      Staker.DepositIdentifier.unwrap(_depositId1)
-    );
-    assertEq(
-      Staker.DepositIdentifier.unwrap(staker.delegateDepositId(_delegate2)),
-      Staker.DepositIdentifier.unwrap(_depositId2)
-    );
+    assertEq(staker.delegateDepositId(_delegate1), _depositId1);
+    assertEq(staker.delegateDepositId(_delegate2), _depositId2);
     assertEq(Staker.DepositIdentifier.unwrap(_depositId1), 1);
     assertEq(Staker.DepositIdentifier.unwrap(_depositId2), 2);
     assertEq(staker.depositorTotalEarningPower(_delegate1), _earningPower1);
@@ -69,7 +60,7 @@ contract InitializeDelegateCompensation is DelegateCompensationStakerTest {
     emit DelegateCompensationStaker.DelegateCompensation__Initialized(
       _delegate, Staker.DepositIdentifier.wrap(1), _earningPower
     );
-    Staker.DepositIdentifier depositId = staker.initializeDelegateCompensation(_delegate);
+    staker.initializeDelegateCompensation(_delegate);
   }
 
   function testFuzz_RevertIf_DelegateCompensationIsAlreadyInitialized(
@@ -81,7 +72,6 @@ contract InitializeDelegateCompensation is DelegateCompensationStakerTest {
 
     calculator.setDelegateEarningPower(_delegate, _earningPower);
     staker.initializeDelegateCompensation(_delegate);
-    console2.log("delegate initialized");
     vm.expectRevert(
       abi.encodeWithSelector(
         DelegateCompensationStaker.DelegateCompensation__AlreadyInitialized.selector, _delegate
