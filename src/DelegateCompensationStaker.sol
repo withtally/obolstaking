@@ -46,7 +46,7 @@ contract DelegateCompensationStaker is Staker {
   /// model.
   error DelegateCompensation__MethodNotSupported();
 
-  /// @notice A mapping from a delegate's address to their unique compensation deposit identifier.
+  /// @notice A mapping from a delegate's address to their unique deposit identifier.
   /// @dev This allows for efficient lookup of a delegate's deposit information. A return value of 0
   /// indicates that the delegate is uninitialized.
   mapping(address delegate => DepositIdentifier) public delegateDepositId;
