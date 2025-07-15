@@ -153,12 +153,4 @@ contract DelegateCompensationStaker is Staker {
     emit DelegateCompensation__Initialized(_delegate, _depositId, _earningPower);
     return _depositId;
   }
-
-  /// @notice Retrieves the compensation deposit information for a given delegate.
-  /// @param _delegate The address of the delegate to query.
-  /// @return The deposit struct containing all compensation information for the delegate.
-  /// @dev Returns an empty struct if the delegate has not been initialized.
-  function getDelegateCompensation(address _delegate) public view returns (Deposit memory) {
-    return deposits[delegateDepositId[_delegate]];
-  }
 }
