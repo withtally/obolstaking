@@ -405,3 +405,10 @@ contract Surrogate is DelegateCompensationStakerTest {
     staker.surrogates(_delegate);
   }
 }
+
+contract _FetchOrDeploySurrogate is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_FetchOrDeploySurrogatesIsCalled(address _delegate) public {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.fetchOrDeploySurrogate(_delegate);
+  }
+}
