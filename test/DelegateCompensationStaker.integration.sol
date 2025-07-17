@@ -11,6 +11,8 @@ import {Staker} from "staker/Staker.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PercentAssertions} from "staker-test/helpers/PercentAssertions.sol";
+import {DelegateCompensationStaker} from "../src/DelegateCompensationStaker.sol";
+import {DelegateCompensationStakerTest} from "./helpers/DelegateCompensationStakerTest.sol";
 
 contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertions {
   address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
@@ -172,5 +174,250 @@ contract DelegateCompensationStakerIntegrationTest is
     assertEq(staker.depositorTotalEarningPower(_delegate2), _expectedEarningPower2);
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId1), _expectedUnclaimedReward1);
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId2), _expectedUnclaimedReward2);
+  }
+
+contract SetAdmin is DelegateCompensationStakerTest {
+  function testFuzz_AdminCanSetNewAdmin(address _newAdmin) public {
+    vm.assume(_newAdmin != address(0));
+
+    vm.expectEmit();
+    emit Staker.AdminSet(admin, _newAdmin);
+
+    vm.prank(admin);
+    staker.setAdmin(_newAdmin);
+
+    assertEq(staker.admin(), _newAdmin);
+  }
+}
+
+contract SetEarningPowerCalculator is DelegateCompensationStakerTest {
+  function testFuzz_AdminCanSetEarningPowerCalculator(address _newCalculator) public {
+    vm.assume(_newCalculator != address(0));
+
+    vm.expectEmit();
+    emit Staker.EarningPowerCalculatorSet(address(calculator), _newCalculator);
+
+    vm.prank(admin);
+    staker.setEarningPowerCalculator(_newCalculator);
+
+    assertEq(address(staker.earningPowerCalculator()), _newCalculator);
+  }
+}
+
+contract SetMaxBumpTip is DelegateCompensationStakerTest {
+  function testFuzz_AdminCanSetMaxBumpTip(uint256 _newMaxBumpTip) public {
+    vm.expectEmit();
+    emit Staker.MaxBumpTipSet(MAX_BUMP_TIP, _newMaxBumpTip);
+
+    vm.prank(admin);
+    staker.setMaxBumpTip(_newMaxBumpTip);
+
+    assertEq(staker.maxBumpTip(), _newMaxBumpTip);
+  }
+}
+
+contract SetRewardNotifier is DelegateCompensationStakerTest {
+  function testFuzz_AdminCanSetRewardNotifier(address _notifier, bool _isEnabled) public {
+    vm.expectEmit();
+    emit Staker.RewardNotifierSet(_notifier, _isEnabled);
+
+    vm.prank(admin);
+    staker.setRewardNotifier(_notifier, _isEnabled);
+
+    assertEq(staker.isRewardNotifier(_notifier), _isEnabled);
+  }
+}
+
+contract SetClaimFeeParameters is DelegateCompensationStakerTest {
+  function testFuzz_AdminCanSetClaimFeeParameters(
+    DelegateCompensationStaker.ClaimFeeParameters memory _newParams
+  ) public {
+    vm.assume(_newParams.feeCollector != address(0));
+    _newParams.feeAmount = uint96(bound(_newParams.feeAmount, 0, staker.MAX_CLAIM_FEE()));
+
+    (uint96 _initialFeeAmount, address _initialFeeCollector) = staker.claimFeeParameters();
+
+    vm.expectEmit();
+    emit Staker.ClaimFeeParametersSet(
+      _initialFeeAmount, _newParams.feeAmount, _initialFeeCollector, _newParams.feeCollector
+    );
+
+    vm.prank(admin);
+    staker.setClaimFeeParameters(_newParams);
+
+    (uint96 _newFeeAmount, address _newFeeCollector) = staker.claimFeeParameters();
+    assertEq(_newFeeAmount, _newParams.feeAmount);
+    assertEq(_newFeeCollector, _newParams.feeCollector);
+  }
+}
+
+contract LastTimeRewardDistributed is DelegateCompensationStakerTest {
+  function testFuzz_ReturnsTheBlockTimestampAfterARewardNotification(
+    uint256 _amount,
+    uint256 _durationPercent
+  ) public {
+    _amount = _boundToRealisticReward(_amount);
+    _mintAndNotifyRewards(_amount);
+
+    _durationPercent = bound(_durationPercent, 0, 100);
+    _jumpAheadByPercentOfRewardDuration(_durationPercent);
+
+    assertEq(staker.lastTimeRewardDistributed(), block.timestamp);
+  }
+}
+
+contract UnclaimedReward is DelegateCompensationStakerTest {
+  function testFuzz_CalculatesCorrectEarningsForASingleDelegate(
+    uint256 _earningPower,
+    uint256 _rewardAmount,
+    address _delegate,
+    uint256 _duration
+  ) public {
+    _assumeValidDelegate(_delegate);
+    _earningPower = _boundToRealisticEarningPower(_earningPower);
+    vm.assume(_earningPower != 0);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    calculator.setDelegateEarningPower(_delegate, _earningPower);
+    _duration = bound(_duration, 0, 100);
+
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    _mintAndNotifyRewards(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_duration);
+
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+    assertLteWithinOnePercent(_unclaimedReward, _percentOf(_rewardAmount, _duration));
+  }
+
+  function testFuzz_CalculatesCorrectEarningsForMultipleDelegates(
+    address _delegate1,
+    address _delegate2,
+    uint256 _earningPower1,
+    uint256 _earningPower2,
+    uint256 _rewardAmount,
+    uint256 _duration
+  ) public {
+    _assumeValidDelegate(_delegate1);
+    _assumeValidDelegate(_delegate2);
+    vm.assume(_delegate1 != _delegate2);
+    _earningPower1 = _boundToRealisticEarningPower(_earningPower1);
+    _earningPower2 = _boundToRealisticEarningPower(_earningPower2);
+    vm.assume(_earningPower1 != 0);
+    vm.assume(_earningPower2 != 0);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    calculator.setDelegateEarningPower(_delegate1, _earningPower1);
+    calculator.setDelegateEarningPower(_delegate2, _earningPower2);
+    _duration = bound(_duration, 0, 100);
+
+    Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
+    Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+
+    _mintAndNotifyRewards(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_duration);
+
+    uint256 _unclaimedReward1 = staker.unclaimedReward(_depositId1);
+    uint256 _unclaimedReward2 = staker.unclaimedReward(_depositId2);
+    uint256 _expectedReward1 =
+      (_percentOf(_rewardAmount, _duration) * _earningPower1) / staker.totalEarningPower();
+    uint256 _expectedReward2 =
+      (_percentOf(_rewardAmount, _duration) * _earningPower2) / staker.totalEarningPower();
+
+    assertLteWithinOnePercent(_unclaimedReward1, _expectedReward1);
+    assertLteWithinOnePercent(_unclaimedReward2, _expectedReward2);
+    assertLteWithinOnePercent(
+      _expectedReward1 + _expectedReward2, _percentOf(_rewardAmount, _duration)
+    );
+  }
+}
+
+contract AlterClaimer is DelegateCompensationStakerTest {
+  function testFuzz_DelegateCanAlterClaimerSuccessfully(
+    uint256 _earningPower,
+    address _delegate,
+    address _claimer
+  ) public {
+    _assumeValidDelegate(_delegate);
+    vm.assume(_claimer != _delegate);
+    vm.assume(_claimer != address(0));
+    _earningPower = _boundToRealisticEarningPower(_earningPower);
+    calculator.setDelegateEarningPower(_delegate, _earningPower);
+
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    (,,, address _initialDelegatee, address _initialClaimer,,) = staker.deposits(_depositId);
+    assertEq(_initialClaimer, _delegate);
+    assertEq(_initialDelegatee, _delegate);
+
+    uint256 _currentEarningPower = calculator.getEarningPower(0, _delegate, _delegate);
+    vm.expectEmit(true, true, true, true);
+    emit Staker.ClaimerAltered(_depositId, _delegate, _claimer, _currentEarningPower);
+
+    vm.prank(_delegate);
+    staker.alterClaimer(_depositId, _claimer);
+
+    (,,,, address _newClaimer,,) = staker.deposits(_depositId);
+    assertEq(_claimer, _newClaimer);
+  }
+}
+
+contract ClaimReward is DelegateCompensationStakerTest {
+  function testFuzz_ASingleDelegateReceivesCompensationWhenClaiming(
+    uint256 _earningPower,
+    uint256 _rewardAmount,
+    address _delegate,
+    uint256 _duration
+  ) public {
+    _assumeValidDelegate(_delegate);
+    _earningPower = _boundToRealisticEarningPower(_earningPower);
+    _rewardAmount = _boundToRealisticReward(_rewardAmount);
+    calculator.setDelegateEarningPower(_delegate, _earningPower);
+    _duration = bound(_duration, 0, 100);
+
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    _mintAndNotifyRewards(_rewardAmount);
+    _jumpAheadByPercentOfRewardDuration(_duration);
+
+    uint256 _initialBalance = rewardToken.balanceOf(_delegate);
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+
+    vm.prank(_delegate);
+    staker.claimReward(_depositId);
+
+    assertEq(_initialBalance, 0);
+    assertEq(rewardToken.balanceOf(_delegate), _initialBalance + _unclaimedReward);
+    assertEq(staker.unclaimedReward(_depositId), 0);
+  }
+}
+
+contract BumpEarningPower is DelegateCompensationStakerTest {
+  function testFuzz_BumpsTheDelegateEarningPowerUp(
+    uint256 _initialEarningPower,
+    uint256 _newEarningPower,
+    address _delegate,
+    address _tipReceiver,
+    uint256 _requestedTip
+  ) public {
+    _assumeValidDelegate(_delegate);
+    vm.assume(_tipReceiver != _delegate);
+    vm.assume(_tipReceiver != address(0));
+
+    _initialEarningPower = _boundToRealisticEarningPower(_initialEarningPower);
+    _newEarningPower = _boundToRealisticEarningPower(_newEarningPower);
+    vm.assume(_initialEarningPower != _newEarningPower);
+
+    calculator.setDelegateEarningPower(_delegate, _initialEarningPower);
+
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    _mintAndNotifyRewards(_boundToRealisticReward(1000e18));
+    _jumpAheadByPercentOfRewardDuration(50);
+
+    _requestedTip = bound(_requestedTip, 0, _min(MAX_BUMP_TIP, staker.unclaimedReward(_depositId)));
+    calculator.setDelegateEarningPower(_delegate, _newEarningPower);
+    staker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+
+    (,, uint96 _finalEarningPower,,,,) = staker.deposits(_depositId);
+    assertEq(_finalEarningPower, _newEarningPower);
   }
 }
