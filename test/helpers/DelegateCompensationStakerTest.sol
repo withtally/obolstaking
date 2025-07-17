@@ -68,6 +68,10 @@ contract DelegateCompensationStakerTest is Test, PercentAssertions {
     _boundedRewardAmount = bound(_rewardAmount, 200e6, 10_000_000e18);
   }
 
+  function assertEq(Staker.DepositIdentifier a, Staker.DepositIdentifier b) internal pure {
+    assertEq(Staker.DepositIdentifier.unwrap(a), Staker.DepositIdentifier.unwrap(b));
+  }
+
   /// @dev Helper to filter out invalid delegate addresses
   function _assumeValidDelegate(address _delegate) internal view {
     vm.assume(_delegate != address(0));

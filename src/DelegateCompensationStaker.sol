@@ -4,6 +4,8 @@ pragma solidity ^0.8.23;
 import {Staker} from "staker/Staker.sol";
 import {DelegationSurrogate} from "staker/DelegationSurrogate.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 
 /// @title DelegateCompensationStaker
 /// @author [ScopeLift](https://scopelift.co)
@@ -16,7 +18,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// `initializeDelegateCompensation`  method. Since deposits do not require stake the standard
 /// staking functions like `stake`, `withdraw`, and `stakeMore` are disabled. The other
 /// functionality and methods such as `claimReward` should behave the same way as a standard Staker.
-abstract contract DelegateCompensationStaker is Staker {
+contract DelegateCompensationStaker is Staker {
   using SafeCast for uint256;
 
   /// @notice Emitted when a delegate's reward deposit is successfully initialized.
@@ -44,8 +46,31 @@ abstract contract DelegateCompensationStaker is Staker {
   /// model.
   error DelegateCompensation__MethodNotSupported();
 
-  /// @notice Tracks whether a delegate has already been initialized for compensation.
-  mapping(address delegate => bool isInitialized) public delegateInitialized;
+  /// @notice A mapping from a delegate's address to their unique deposit identifier.
+  /// @dev This allows for efficient lookup of a delegate's deposit information. A return value of 0
+  /// indicates that the delegate is uninitialized.
+  mapping(address delegate => DepositIdentifier) public delegateDepositId;
+
+  /// @param _rewardToken ERC20 token in which rewards will be denominated.
+  /// @param _earningPowerCalculator The contract that will serve as the initial calculator of
+  /// earning power for the staker system.
+  /// @param _maxBumpTip The maximum tip that can be paid to a bumper for updating earning power.
+  /// @param _admin Address which will have permission to manage reward notifiers, claim fee
+  /// parameters, the max bump tip, and the reward calculator.
+  constructor(
+    IERC20 _rewardToken,
+    IEarningPowerCalculator _earningPowerCalculator,
+    uint256 _maxBumpTip,
+    address _admin
+  ) Staker(_rewardToken, IERC20(address(0)), _earningPowerCalculator, _maxBumpTip, _admin) {
+    // Deposit ID `0` serves as the default value in the `delegateDepositId` mapping to indicate
+    // uninitialized delegates. However, the deposit ID counter in the base `Staker` also starts at
+    // `0`. This creates a collision where the first delegate would be assigned deposit ID `0`,
+    // allowing them to bypass the re-initialization check in `initializeDelegateCompensation`. To
+    // prevent this vulnerability, we consume ID `0` upfront to ensure real deposits start from ID
+    // `1`.
+    _useDepositId();
+  }
 
   /// @notice This method is not supported since there is no voting power to delegate.
   function alterDelegatee(DepositIdentifier, address) public pure override {
@@ -101,7 +126,9 @@ abstract contract DelegateCompensationStaker is Staker {
     virtual
     returns (DepositIdentifier)
   {
-    if (delegateInitialized[_delegate]) revert DelegateCompensation__AlreadyInitialized(_delegate);
+    if (DepositIdentifier.unwrap(delegateDepositId[_delegate]) != 0) {
+      revert DelegateCompensation__AlreadyInitialized(_delegate);
+    }
 
     _checkpointGlobalReward();
 
@@ -121,7 +148,7 @@ abstract contract DelegateCompensationStaker is Staker {
       scaledUnclaimedRewardCheckpoint: 0
     });
 
-    delegateInitialized[_delegate] = true;
+    delegateDepositId[_delegate] = _depositId;
 
     emit DelegateCompensation__Initialized(_delegate, _depositId, _earningPower);
     return _depositId;
