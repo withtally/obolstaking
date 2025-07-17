@@ -47,7 +47,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     vm.assume(_delegate != address(OBOL_TOKEN_ADDRESS));
   }
 
-  function _setDelegateeEligibilityWithVotingPower(
+  function _setupDelegateWithVotingPowerAndEligibility(
     address _delegatee,
     uint256 _votingPower,
     bool _eligible
@@ -112,7 +112,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 contract DelegateCompensationStakerIntegrationTest is
   DelegateCompensationStakerIntegrationTestBase
 {
-  function testForkFuzz_CorrectlyAccruesRewardsForASingleDelegate(
+  function testForkFuzz_SingleDelegateAccruesRewardProportionalToVotingPower(
     address _delegate,
     uint224 _votingPower,
     uint256 _percentDuration,
@@ -122,7 +122,7 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 100);
     _votingPower = _boundToRealisticVotingPower(_votingPower);
 
-    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligibility);
+    _setupDelegateWithVotingPowerAndEligibility(_delegate, _votingPower, _eligibility);
 
     // otherwise `getPastVotes` reverts
     vm.roll(block.number + 1);
@@ -141,7 +141,7 @@ contract DelegateCompensationStakerIntegrationTest is
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId), _expectedUnclaimedReward);
   }
 
-  function testForkFuzz_CorrectlyAccruesRewardsForMultipleDelegates(
+  function testForkFuzz_MultipleDelegatesAccrueRewardsProportionalToVotingPower(
     address _delegate1,
     address _delegate2,
     uint224 _votingPower1,
@@ -157,8 +157,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     _votingPower1 = _boundToRealisticVotingPower(_votingPower1);
     _votingPower2 = _boundToRealisticVotingPower(_votingPower2);
-    _setDelegateeEligibilityWithVotingPower(_delegate1, _votingPower1, _eligibility1);
-    _setDelegateeEligibilityWithVotingPower(_delegate2, _votingPower2, _eligibility2);
+    _setupDelegateWithVotingPowerAndEligibility(_delegate1, _votingPower1, _eligibility1);
+    _setupDelegateWithVotingPowerAndEligibility(_delegate2, _votingPower2, _eligibility2);
 
     // otherwise `getPastVotes` reverts
     vm.roll(block.number + 1);
@@ -185,7 +185,7 @@ contract DelegateCompensationStakerIntegrationTest is
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId2), _expectedUnclaimedReward2);
   }
 
-  function testForkFuzz_CorrectlyClaimsRewardsForASingleDelegate(
+  function testForkFuzz_SingleDelegateClaimsRewardProportionalToVotingPower(
     address _delegate,
     uint224 _votingPower,
     uint256 _percentDuration,
@@ -195,7 +195,7 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 100);
     _votingPower = _boundToRealisticVotingPower(_votingPower);
 
-    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligibility);
+    _setupDelegateWithVotingPowerAndEligibility(_delegate, _votingPower, _eligibility);
 
     // otherwise `getPastVotes` reverts
     vm.roll(block.number + 1);
@@ -215,7 +215,7 @@ contract DelegateCompensationStakerIntegrationTest is
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
 
-  function testForkFuzz_CorrectlyClaimsRewardsForMultipleDelegates(
+  function testForkFuzz_MultipleDelegatesClaimRewardsProportionalToVotingPower(
     address _delegate1,
     address _delegate2,
     uint224 _votingPower1,
@@ -231,8 +231,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     _votingPower1 = _boundToRealisticVotingPower(_votingPower1);
     _votingPower2 = _boundToRealisticVotingPower(_votingPower2);
-    _setDelegateeEligibilityWithVotingPower(_delegate1, _votingPower1, _eligibility1);
-    _setDelegateeEligibilityWithVotingPower(_delegate2, _votingPower2, _eligibility2);
+    _setupDelegateWithVotingPowerAndEligibility(_delegate1, _votingPower1, _eligibility1);
+    _setupDelegateWithVotingPowerAndEligibility(_delegate2, _votingPower2, _eligibility2);
 
     // otherwise `getPastVotes` reverts
     vm.roll(block.number + 1);
