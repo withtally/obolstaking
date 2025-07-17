@@ -14,6 +14,10 @@
   fuzz = { runs = 5000 }
   invariant = { runs = 1000 }
 
+[profile.integration]
+  fuzz = { runs = 1500 }
+  invariant = { runs = 500 }
+
 [profile.coverage]
   fuzz = { runs = 100 }
   invariant = { runs = 0 }
