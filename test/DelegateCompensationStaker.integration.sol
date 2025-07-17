@@ -48,14 +48,23 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
   }
 
   function _setDelegateeEligibilityWithVotingPower(
-    address _delegate,
+    address _delegatee,
     uint256 _votingPower,
     bool _eligible
   ) internal {
-    deal(OBOL_TOKEN_ADDRESS, _delegate, _votingPower);
-    vm.prank(_delegate);
-    IVotes(OBOL_TOKEN_ADDRESS).delegate(_delegate);
-    mockOracle.__setMockDelegateeEligibility(_delegate, _eligible);
+    // Create a unique delegator address
+    address _delegator =
+      makeAddr(string(abi.encodePacked("delegator_", _delegatee, "_", _votingPower)));
+    _assumeValidDelegate(_delegator);
+    vm.assume(_delegator != _delegatee);
+
+    // Fund the delegator with tokens and delegate voting power to the delegatee
+    deal(OBOL_TOKEN_ADDRESS, _delegator, _votingPower);
+    vm.prank(_delegator);
+    IVotes(OBOL_TOKEN_ADDRESS).delegate(_delegatee);
+
+    // Configure the mock oracle with the delegatee's eligibility status
+    mockOracle.__setMockDelegateeEligibility(_delegatee, _eligible);
   }
 
   function _boundToRealisticVotingPower(uint224 votingPower) internal pure returns (uint224) {
@@ -175,6 +184,83 @@ contract DelegateCompensationStakerIntegrationTest is
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId1), _expectedUnclaimedReward1);
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId2), _expectedUnclaimedReward2);
   }
+
+  function testForkFuzz_CorrectlyClaimsRewardsForASingleDelegate(
+    address _delegate,
+    uint224 _votingPower,
+    uint256 _percentDuration,
+    bool _eligibility
+  ) public {
+    _assumeValidDelegate(_delegate);
+    _percentDuration = bound(_percentDuration, 1, 100);
+    _votingPower = _boundToRealisticVotingPower(_votingPower);
+
+    _setDelegateeEligibilityWithVotingPower(_delegate, _votingPower, _eligibility);
+
+    // otherwise `getPastVotes` reverts
+    vm.roll(block.number + 1);
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    _mintTransferAndNotifyReward();
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _initialBalance = staker.REWARD_TOKEN().balanceOf(_delegate);
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+
+    vm.prank(_delegate);
+    staker.claimReward(_depositId);
+
+    assertEq(_initialBalance, 0);
+    assertEq(staker.REWARD_TOKEN().balanceOf(_delegate), _initialBalance + _unclaimedReward);
+    assertEq(staker.unclaimedReward(_depositId), 0);
+  }
+
+  function testForkFuzz_CorrectlyClaimsRewardsForMultipleDelegates(
+    address _delegate1,
+    address _delegate2,
+    uint224 _votingPower1,
+    uint224 _votingPower2,
+    bool _eligibility1,
+    bool _eligibility2,
+    uint256 _percentDuration
+  ) public {
+    _assumeValidDelegate(_delegate1);
+    _assumeValidDelegate(_delegate2);
+    vm.assume(_delegate1 != _delegate2);
+    _percentDuration = bound(_percentDuration, 0, 100);
+
+    _votingPower1 = _boundToRealisticVotingPower(_votingPower1);
+    _votingPower2 = _boundToRealisticVotingPower(_votingPower2);
+    _setDelegateeEligibilityWithVotingPower(_delegate1, _votingPower1, _eligibility1);
+    _setDelegateeEligibilityWithVotingPower(_delegate2, _votingPower2, _eligibility2);
+
+    // otherwise `getPastVotes` reverts
+    vm.roll(block.number + 1);
+    Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
+    Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+
+    _mintTransferAndNotifyReward();
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _initialBalance1 = staker.REWARD_TOKEN().balanceOf(_delegate1);
+    uint256 _initialBalance2 = staker.REWARD_TOKEN().balanceOf(_delegate2);
+    uint256 _unclaimedReward1 = staker.unclaimedReward(_depositId1);
+    uint256 _unclaimedReward2 = staker.unclaimedReward(_depositId2);
+
+    vm.prank(_delegate1);
+    staker.claimReward(_depositId1);
+
+    vm.prank(_delegate2);
+    staker.claimReward(_depositId2);
+
+    assertEq(_initialBalance1, 0);
+    assertEq(_initialBalance2, 0);
+    assertEq(staker.REWARD_TOKEN().balanceOf(_delegate1), _initialBalance1 + _unclaimedReward1);
+    assertEq(staker.REWARD_TOKEN().balanceOf(_delegate2), _initialBalance2 + _unclaimedReward2);
+    assertEq(staker.unclaimedReward(_depositId1), 0);
+    assertEq(staker.unclaimedReward(_depositId2), 0);
+  }
+}
 
 contract SetAdmin is DelegateCompensationStakerTest {
   function testFuzz_AdminCanSetNewAdmin(address _newAdmin) public {
