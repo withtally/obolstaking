@@ -80,3 +80,56 @@ contract InitializeDelegateCompensation is DelegateCompensationStakerTest {
     staker.initializeDelegateCompensation(_delegate);
   }
 }
+
+contract Stake is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_StakeIsCalled(uint256 _amount, address _delegate) public {
+    vm.expectRevert();
+    staker.stake(_amount, _delegate);
+  }
+
+  function testFuzz_RevertIf_StakeWithClaimerIsCalled(
+    uint256 _amount,
+    address _delegate,
+    address _claimer
+  ) public {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.stake(_amount, _delegate, _claimer);
+  }
+}
+
+contract StakeMore is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_StakeMoreIsCalled(uint256 _depositId, uint256 _amount) public {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.stakeMore(Staker.DepositIdentifier.wrap(_depositId), _amount);
+  }
+}
+
+contract Withdraw is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_WithdrawIsCalled(uint256 _depositId, uint256 _amount) public {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.withdraw(Staker.DepositIdentifier.wrap(_depositId), _amount);
+  }
+}
+
+contract AlterDelegatee is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_AlterDelegateeIsCalled(uint256 _depositId, address _newDelegatee)
+    public
+  {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.alterDelegatee(Staker.DepositIdentifier.wrap(_depositId), _newDelegatee);
+  }
+}
+
+contract Surrogates is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_SurrogatesIsCalled(address _delegate) public {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.surrogates(_delegate);
+  }
+}
+
+contract _FetchOrDeploySurrogate is DelegateCompensationStakerTest {
+  function testFuzz_RevertIf_FetchOrDeploySurrogatesIsCalled(address _delegate) public {
+    vm.expectRevert(DelegateCompensationStaker.DelegateCompensation__MethodNotSupported.selector);
+    staker.fetchOrDeploySurrogate(_delegate);
+  }
+}

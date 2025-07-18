@@ -17,4 +17,8 @@ contract DelegateCompensationStakerHarness is DelegateCompensationStaker {
   function scaledUnclaimedReward(DepositIdentifier _depositId) public view returns (uint256) {
     return _scaledUnclaimedReward(deposits[_depositId]);
   }
+
+  function fetchOrDeploySurrogate(address _delegatee) public pure {
+    _fetchOrDeploySurrogate(_delegatee);
+  }
 }
