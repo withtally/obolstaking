@@ -94,7 +94,9 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
       _requestedTip = 0;
     } else {
       _requestedTip = bound(
-        _requestedTip, 0, Math.min(MAX_BUMP_TIP, staker.unclaimedReward(_depositId) - MAX_BUMP_TIP)
+        _requestedTip,
+        0,
+        Math.min(staker.maxBumpTip(), staker.unclaimedReward(_depositId) - staker.maxBumpTip())
       );
     }
   }
@@ -367,7 +369,7 @@ contract SetEarningPowerCalculator is DelegateCompensationStakerIntegrationTestB
 contract SetMaxBumpTip is DelegateCompensationStakerIntegrationTestBase {
   function testFuzz_AdminCanSetMaxBumpTip(uint256 _newMaxBumpTip) public {
     vm.expectEmit();
-    emit Staker.MaxBumpTipSet(MAX_BUMP_TIP, _newMaxBumpTip);
+    emit Staker.MaxBumpTipSet(staker.maxBumpTip(), _newMaxBumpTip);
 
     vm.prank(admin);
     staker.setMaxBumpTip(_newMaxBumpTip);
