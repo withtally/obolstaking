@@ -48,7 +48,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
   function _setupDelegateWithVotingPowerAndEligibility(
     address _delegatee,
-    uint224 _votingPower,
+    uint256 _votingPower,
     bool _eligible
   ) internal {
     // Create a unique delegator address
@@ -66,7 +66,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     mockOracle.__setMockDelegateeEligibility(_delegatee, _eligible);
   }
 
-  function _addDelegateVotingPower(address _delegator, address _delegatee, uint224 _votingPower)
+  function _addDelegateVotingPower(address _delegator, address _delegatee, uint256 _votingPower)
     internal
   {
     // Fund the delegator with tokens and delegate voting power to the delegatee
@@ -81,8 +81,11 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     IVotes(OBOL_TOKEN_ADDRESS).delegate(address(_delegator));
   }
 
-  function _boundToRealisticVotingPower(uint224 votingPower) internal pure returns (uint224) {
-    return uint224(bound(votingPower, 0, type(uint96).max));
+  // Earning power is of type uint96. In delegate compensation staker, earning power is the square
+  // root of voting power if the delegate is eligible or if the earning power oracle is paused or
+  // stale. Therefore, the maximum safe value for the voting power is square of uint96, i.e. uint192.
+  function _boundToRealisticVotingPower(uint256 votingPower) internal pure returns (uint256) {
+    return uint256(bound(votingPower, 0, type(uint192).max));
   }
 
   function _boundToValidBumpTip(Staker.DepositIdentifier _depositId)
@@ -122,7 +125,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
   function _calculateExpectedUnclaimedReward(
     address _delegate,
-    uint224 _votingPower,
+    uint256 _votingPower,
     uint256 _percentDuration
   ) internal view returns (uint256) {
     uint256 _delegateEarningPower = staker.depositorTotalEarningPower(_delegate);
@@ -144,7 +147,7 @@ contract DelegateCompensationStakerIntegrationTest is
 {
   function testForkFuzz_SingleDelegateAccruesRewardProportionalToVotingPower(
     address _delegate,
-    uint224 _votingPower,
+    uint256 _votingPower,
     uint256 _percentDuration,
     bool _eligibility
   ) public {
@@ -174,8 +177,8 @@ contract DelegateCompensationStakerIntegrationTest is
   function testForkFuzz_MultipleDelegatesAccrueRewardsProportionalToVotingPower(
     address _delegate1,
     address _delegate2,
-    uint224 _votingPower1,
-    uint224 _votingPower2,
+    uint256 _votingPower1,
+    uint256 _votingPower2,
     bool _eligibility1,
     bool _eligibility2,
     uint256 _percentDuration
@@ -217,7 +220,7 @@ contract DelegateCompensationStakerIntegrationTest is
 
   function testForkFuzz_SingleDelegateClaimsRewardProportionalToVotingPower(
     address _delegate,
-    uint224 _votingPower,
+    uint256 _votingPower,
     uint256 _percentDuration,
     bool _eligibility
   ) public {
@@ -248,8 +251,8 @@ contract DelegateCompensationStakerIntegrationTest is
   function testForkFuzz_MultipleDelegatesClaimRewardsProportionalToVotingPower(
     address _delegate1,
     address _delegate2,
-    uint224 _votingPower1,
-    uint224 _votingPower2,
+    uint256 _votingPower1,
+    uint256 _votingPower2,
     bool _eligibility1,
     bool _eligibility2,
     uint256 _percentDuration
@@ -293,7 +296,7 @@ contract DelegateCompensationStakerIntegrationTest is
 
   function testForkFuzz_DelegateAccruesRewardWhenOracleIsStaleOrPaused(
     address _delegate,
-    uint224 _votingPower,
+    uint256 _votingPower,
     uint256 _percentDuration,
     address _tipReceiver,
     bool _isOraclePaused,
@@ -416,7 +419,7 @@ contract SetClaimFeeParameters is DelegateCompensationStakerIntegrationTestBase 
 contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
   function testFuzz_CalculatesCorrectEarningsForASingleDelegate(
     address _delegate,
-    uint224 _votingPower,
+    uint256 _votingPower,
     uint256 _percentDuration
   ) public {
     _assumeValidDelegate(_delegate);
@@ -440,8 +443,8 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
   function testFuzz_CalculatesCorrectEarningsForMultipleDelegates(
     address _delegate1,
     address _delegate2,
-    uint224 _votingPower1,
-    uint224 _votingPower2,
+    uint256 _votingPower1,
+    uint256 _votingPower2,
     uint256 _percentDuration
   ) public {
     _assumeValidDelegate(_delegate1);
@@ -477,7 +480,7 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
 
 contract AlterClaimer is DelegateCompensationStakerIntegrationTestBase {
   function testFuzz_DelegateCanAlterClaimerSuccessfully(
-    uint224 _votingPower,
+    uint256 _votingPower,
     address _delegate,
     address _claimer
   ) public {
@@ -508,7 +511,7 @@ contract AlterClaimer is DelegateCompensationStakerIntegrationTestBase {
 
 contract ClaimReward is DelegateCompensationStakerIntegrationTestBase {
   function testFuzz_ASingleDelegateReceivesCompensationWhenClaiming(
-    uint224 _votingPower,
+    uint256 _votingPower,
     address _delegate,
     uint256 _percentDuration
   ) public {
@@ -537,8 +540,8 @@ contract ClaimReward is DelegateCompensationStakerIntegrationTestBase {
 
 contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
   function testFuzz_BumpingDelegateEarningPowerChangesDelegateEarningPower(
-    uint224 _initialVotingPower,
-    uint224 _newVotingPower,
+    uint256 _initialVotingPower,
+    uint256 _newVotingPower,
     address _delegator1,
     address _delegator2,
     address _delegatee,
@@ -589,8 +592,8 @@ contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
   }
 
   function testFuzz_BumpingDelegateEarningPowerChangesAccrualOfRewards(
-    uint224 _initialVotingPower,
-    uint224 _newVotingPower,
+    uint256 _initialVotingPower,
+    uint256 _newVotingPower,
     address _delegator1,
     address _delegator2,
     address _delegatee,
