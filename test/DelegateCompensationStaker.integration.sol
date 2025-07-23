@@ -288,6 +288,52 @@ contract DelegateCompensationStakerIntegrationTest is
     assertEq(staker.unclaimedReward(_depositId1), 0);
     assertEq(staker.unclaimedReward(_depositId2), 0);
   }
+
+  function testForkFuzz_DelegateAccruesRewardWhenOracleIsStaleOrPaused(
+    address _delegate,
+    uint224 _votingPower,
+    uint256 _percentDuration,
+    address _tipReceiver,
+    bool _isOraclePaused,
+    bool _isOracleStale
+  ) public {
+    _assumeValidDelegate(_delegate);
+    vm.assume(_tipReceiver != _delegate);
+    vm.assume(_tipReceiver != address(0));
+    vm.assume(_isOraclePaused || _isOracleStale == true);
+    _percentDuration = bound(_percentDuration, 1, 50);
+    _votingPower = _boundToRealisticVotingPower(_votingPower);
+
+    _setupDelegateWithVotingPowerAndEligibility(_delegate, _votingPower, true);
+
+    // otherwise `getPastVotes` reverts
+    vm.roll(block.number + 1);
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    _mintTransferAndNotifyReward();
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    // Pause Oracle
+    mockOracle.__setMockIsOraclePaused(_isOraclePaused);
+    mockOracle.__setMockIsOracleStale(_isOracleStale);
+
+    // roll again to
+    vm.roll(block.number + calculator.votingPowerUpdateInterval());
+
+    uint256 _initialBalance = staker.REWARD_TOKEN().balanceOf(_delegate);
+    uint256 _expectedUnclaimedReward =
+      _calculateExpectedUnclaimedReward(_delegate, _votingPower, _percentDuration);
+
+    // earning power updated inside claimReward call
+    vm.prank(_delegate);
+    staker.claimReward(_depositId);
+
+    assertEq(_initialBalance, 0);
+    assertLteWithinOnePercent(
+      staker.REWARD_TOKEN().balanceOf(_delegate), _initialBalance + _expectedUnclaimedReward
+    );
+    assertEq(staker.unclaimedReward(_depositId), 0);
+  }
 }
 
 contract SetAdmin is DelegateCompensationStakerIntegrationTestBase {
