@@ -84,7 +84,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     vm.stopPrank();
   }
 
-  function _jumpAheadByPercentOfRewardDuration(uint256 _percent) public {
+  function _jumpAheadByPercentOfRewardDuration(uint256 _percent) internal {
     uint256 _seconds = (_percent * staker.REWARD_DURATION()) / 100;
     vm.warp(block.timestamp + _seconds);
   }
