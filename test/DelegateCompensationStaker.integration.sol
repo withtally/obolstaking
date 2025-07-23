@@ -66,8 +66,37 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     mockOracle.__setMockDelegateeEligibility(_delegatee, _eligible);
   }
 
+  function _addDelegateVotingPower(address _delegator, address _delegatee, uint224 _votingPower)
+    internal
+  {
+    // Fund the delegator with tokens and delegate voting power to the delegatee
+    deal(OBOL_TOKEN_ADDRESS, _delegator, _votingPower);
+    vm.prank(_delegator);
+    IVotes(OBOL_TOKEN_ADDRESS).delegate(_delegatee);
+  }
+
+  function _removeDelegateVotingPower(address _delegator) internal {
+    vm.prank(_delegator);
+    // Remove delegation by delegating to oneself
+    IVotes(OBOL_TOKEN_ADDRESS).delegate(address(_delegator));
+  }
+
   function _boundToRealisticVotingPower(uint224 votingPower) internal pure returns (uint224) {
     return uint224(bound(votingPower, 0, type(uint96).max));
+  }
+
+  function _boundToValidBumpTip(Staker.DepositIdentifier _depositId)
+    internal
+    view
+    returns (uint256 _requestedTip)
+  {
+    if (staker.unclaimedReward(_depositId) < staker.maxBumpTip()) {
+      _requestedTip = 0;
+    } else {
+      _requestedTip = bound(
+        _requestedTip, 0, Math.min(MAX_BUMP_TIP, staker.unclaimedReward(_depositId) - MAX_BUMP_TIP)
+      );
+    }
   }
 
   function _mintTransferAndNotifyReward() internal {
@@ -105,10 +134,6 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
   function assertEq(Staker.DepositIdentifier a, Staker.DepositIdentifier b) internal pure {
     assertEq(Staker.DepositIdentifier.unwrap(a), Staker.DepositIdentifier.unwrap(b));
-  }
-
-  function _min(uint256 _leftValue, uint256 _rightValue) internal pure returns (uint256) {
-    return _leftValue > _rightValue ? _rightValue : _leftValue;
   }
 }
 
@@ -463,34 +488,52 @@ contract ClaimReward is DelegateCompensationStakerIntegrationTestBase {
 }
 
 contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
-  function testFuzz_BumpsTheDelegateEarningPowerUp(
+  function testFuzz_BumpingDelegateEarningPowerChangesDelegateEarningPower(
     uint224 _initialVotingPower,
     uint224 _newVotingPower,
-    address _delegate,
+    address _delegator1,
+    address _delegator2,
+    address _delegatee,
     address _tipReceiver,
-    uint256 _requestedTip
+    uint256 _requestedTip,
+    uint256 _percentDuration
   ) public {
-    _assumeValidDelegate(_delegate);
-    vm.assume(_tipReceiver != _delegate);
+    _assumeValidDelegate(_delegator1);
+    _assumeValidDelegate(_delegator2);
+    _assumeValidDelegate(_delegatee);
+    vm.assume(_delegator1 != _delegator2);
+    vm.assume(_delegatee != _delegator1);
+    vm.assume(_delegatee != _delegator2);
+    vm.assume(_tipReceiver != _delegator1);
+    vm.assume(_tipReceiver != _delegator2);
+    vm.assume(_tipReceiver != _delegatee);
     vm.assume(_tipReceiver != address(0));
 
     _initialVotingPower = _boundToRealisticVotingPower(_initialVotingPower);
     _newVotingPower = _boundToRealisticVotingPower(_newVotingPower);
-    vm.assume(Math.sqrt(_initialVotingPower) != Math.sqrt(_initialVotingPower + _newVotingPower));
+    vm.assume(Math.sqrt(_initialVotingPower) != Math.sqrt(_newVotingPower));
 
-    _setupDelegateWithVotingPowerAndEligibility(_delegate, _initialVotingPower, true);
+    // Set initial voting power
+    _addDelegateVotingPower(_delegator1, _delegatee, _initialVotingPower);
+    mockOracle.__setMockDelegateeEligibility(_delegatee, true);
 
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegatee);
 
-    _mintTransferAndNotifyReward();
-    _setupDelegateWithVotingPowerAndEligibility(_delegate, _newVotingPower, true);
+    // Reset delegate voting power
+    _removeDelegateVotingPower(_delegator1);
+    _addDelegateVotingPower(_delegator2, _delegatee, _newVotingPower);
     vm.roll(block.number + calculator.votingPowerUpdateInterval());
 
-    _requestedTip = bound(_requestedTip, 0, _min(MAX_BUMP_TIP, staker.unclaimedReward(_depositId)));
-    staker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+    _mintTransferAndNotifyReward();
 
-    uint256 _expectedNewEarningPower = uint256(Math.sqrt(_initialVotingPower + _newVotingPower));
+    _percentDuration = bound(_percentDuration, 0, 100);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _expectedNewEarningPower = uint256(Math.sqrt(_newVotingPower));
+    _requestedTip = _boundToValidBumpTip(_depositId);
+
+    staker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
 
     (,, uint96 _newEarningPower,,,,) = staker.deposits(_depositId);
     assertEq(_newEarningPower, _expectedNewEarningPower);
