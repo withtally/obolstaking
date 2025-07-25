@@ -407,10 +407,10 @@ contract DelegateCompensationStakerIntegrationTest is
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
 
     _mintTransferAndNotifyReward();
-    _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     // Pause Oracle
     _setOracleAsPaused();
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     uint256 _initialBalance = staker.REWARD_TOKEN().balanceOf(_delegate);
     uint256 _expectedUnclaimedReward =
@@ -443,10 +443,9 @@ contract DelegateCompensationStakerIntegrationTest is
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
 
     _mintTransferAndNotifyReward();
-    _jumpAheadByPercentOfRewardDuration(_percentDuration);
-
     // Pause Oracle
     _jumpAndSetOracleAsStale();
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     // Calculate total elapsed time in seconds
     uint256 _staleTime = BinaryEligibilityOracleEarningPowerCalculator(
