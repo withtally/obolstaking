@@ -96,7 +96,6 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     address _delegator =
       makeAddr(string(abi.encodePacked("delegator_", _delegatee, "_", _votingPower)));
     _assumeValidDelegate(_delegator);
-    vm.assume(_delegator != _delegatee);
 
     // Fund the delegator with tokens and delegate voting power to the delegatee
     deal(OBOL_TOKEN_ADDRESS, _delegator, _votingPower);
