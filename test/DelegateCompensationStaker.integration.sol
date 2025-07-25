@@ -4,16 +4,17 @@ pragma solidity ^0.8.23;
 import {Test, console2} from "forge-std/Test.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {BinaryVotingPowerEarningPowerCalculator} from
-  "../src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
+  "src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
 import {BinaryEligibilityOracleEarningPowerCalculator} from
   "staker/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
-import {DelegateCompensationStakerHarness} from "./harnesses/DelegateCompensationStakerHarness.sol";
+import {DelegateCompensationStakerHarness} from
+  "test/harnesses/DelegateCompensationStakerHarness.sol";
 import {Staker} from "staker/Staker.sol";
 import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PercentAssertions} from "staker-test/helpers/PercentAssertions.sol";
-import {DelegateCompensationStaker} from "../src/DelegateCompensationStaker.sol";
+import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
 
 contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertions {
   address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
