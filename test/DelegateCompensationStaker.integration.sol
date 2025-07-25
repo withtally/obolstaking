@@ -13,6 +13,7 @@ import {Staker} from "staker/Staker.sol";
 import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {DelegateCompensationStakerTest} from "test/helpers/DelegateCompensationStakerTest.sol";
 import {PercentAssertions} from "staker-test/helpers/PercentAssertions.sol";
 import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
 
@@ -549,7 +550,7 @@ contract DelegateCompensationStakerIntegrationTest is
   }
 }
 
-contract SetAdmin is DelegateCompensationStakerIntegrationTestBase {
+contract SetAdmin is DelegateCompensationStakerTest {
   function testFuzz_AdminCanSetNewAdmin(address _newAdmin) public {
     vm.assume(_newAdmin != address(0));
 
@@ -563,7 +564,7 @@ contract SetAdmin is DelegateCompensationStakerIntegrationTestBase {
   }
 }
 
-contract SetEarningPowerCalculator is DelegateCompensationStakerIntegrationTestBase {
+contract SetEarningPowerCalculator is DelegateCompensationStakerTest {
   function testFuzz_AdminCanSetEarningPowerCalculator(address _newCalculator) public {
     vm.assume(_newCalculator != address(0));
 
@@ -577,7 +578,7 @@ contract SetEarningPowerCalculator is DelegateCompensationStakerIntegrationTestB
   }
 }
 
-contract SetMaxBumpTip is DelegateCompensationStakerIntegrationTestBase {
+contract SetMaxBumpTip is DelegateCompensationStakerTest {
   function testFuzz_AdminCanSetMaxBumpTip(uint256 _newMaxBumpTip) public {
     vm.expectEmit();
     emit Staker.MaxBumpTipSet(staker.maxBumpTip(), _newMaxBumpTip);
@@ -589,7 +590,7 @@ contract SetMaxBumpTip is DelegateCompensationStakerIntegrationTestBase {
   }
 }
 
-contract SetRewardNotifier is DelegateCompensationStakerIntegrationTestBase {
+contract SetRewardNotifier is DelegateCompensationStakerTest {
   function testFuzz_AdminCanSetRewardNotifier(address _notifier, bool _isEnabled) public {
     vm.expectEmit();
     emit Staker.RewardNotifierSet(_notifier, _isEnabled);
@@ -601,7 +602,7 @@ contract SetRewardNotifier is DelegateCompensationStakerIntegrationTestBase {
   }
 }
 
-contract SetClaimFeeParameters is DelegateCompensationStakerIntegrationTestBase {
+contract SetClaimFeeParameters is DelegateCompensationStakerTest {
   function testFuzz_AdminCanSetClaimFeeParameters(
     DelegateCompensationStaker.ClaimFeeParameters memory _newParams
   ) public {
