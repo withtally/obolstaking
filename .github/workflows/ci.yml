@@ -25,7 +25,7 @@ jobs:
           forge --version
           forge build --sizes
 
-  test:
+  unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -34,7 +34,18 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run tests
-        run: forge test
+        run: forge test --no-match-path 'test/*.integration.t.sol'
+
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run tests
+        run: FOUNDRY_PROFILE=integration forge test --match-path 'test/*.integration.t.sol' 
 
   coverage:
     runs-on: ubuntu-latest
