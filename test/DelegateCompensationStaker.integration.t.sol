@@ -95,7 +95,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     _delegateVotingPower(_delegatee, _votingPower, true);
   }
 
-  function _delegateIneligibleDelegateVotignPower(address _delegatee, uint256 _votingPower)
+  function _delegateIneligibleDelegateVotingPower(address _delegatee, uint256 _votingPower)
     internal
   {
     _delegateVotingPower(_delegatee, _votingPower, false);
@@ -127,7 +127,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
   function _removeDelegateVotingPower(address _delegator) internal {
     vm.prank(_delegator);
-    // Remove delegation by delegating to oneself
+    // Remove delegation by delegating to the 0 address
     IVotes(OBOL_TOKEN_ADDRESS).delegate(address(0));
   }
 
@@ -245,7 +245,7 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 100);
     _votingPower = _boundToValidVotingPower(_votingPower);
 
-    _delegateIneligibleDelegateVotignPower(_delegate, _votingPower);
+    _delegateIneligibleDelegateVotingPower(_delegate, _votingPower);
 
     // otherwise `getPastVotes` reverts
     vm.roll(block.number + 1);
@@ -347,8 +347,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     _votingPower1 = _boundToValidVotingPower(_votingPower1);
     _votingPower2 = _boundToValidVotingPower(_votingPower2);
-    _delegateIneligibleDelegateVotignPower(_delegate1, _votingPower1);
-    _delegateIneligibleDelegateVotignPower(_delegate2, _votingPower2);
+    _delegateIneligibleDelegateVotingPower(_delegate1, _votingPower1);
+    _delegateIneligibleDelegateVotingPower(_delegate2, _votingPower2);
 
     // otherwise `getPastVotes` reverts
     vm.roll(block.number + 1);
