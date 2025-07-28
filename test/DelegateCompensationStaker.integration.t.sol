@@ -92,14 +92,14 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
   }
 
   function _delegateEligibleDelegateVotingPower(address _delegatee, uint256 _votingPower) internal {
-		  _delegateVotingPower(_delegatee, _votingPower, true);
+    _delegateVotingPower(_delegatee, _votingPower, true);
   }
 
-  function _delegateIneligibleDelegateVotignPower(address _delegatee, uint256 _votingPower) internal {
-		  _delegateVotingPower(_delegatee, _votingPower, false);
+  function _delegateIneligibleDelegateVotignPower(address _delegatee, uint256 _votingPower)
+    internal
+  {
+    _delegateVotingPower(_delegatee, _votingPower, false);
   }
-
-
 
   function _delegateVotingPower(address _delegatee, uint256 _votingPower, bool _eligible) internal {
     // Create a unique delegator address
@@ -144,11 +144,8 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     view
     returns (uint256 _requestedTip)
   {
-      _requestedTip = bound(
-        _requestedTip,
-        0,
-        Math.min(staker.maxBumpTip(), staker.unclaimedReward(_depositId))
-      );
+    _requestedTip =
+      bound(_requestedTip, 0, Math.min(staker.maxBumpTip(), staker.unclaimedReward(_depositId)));
   }
 
   function _mintTransferAndNotifyReward() internal {
