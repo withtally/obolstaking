@@ -37,14 +37,14 @@ contract DelegateCompensationStaker is Staker {
   /// @param delegate The address of the delegate for whom initialization was attempted.
   /// @dev This error prevents duplicate deposits for the same delegate, which would corrupt
   /// the accounting system and allow unfair compensation accumulation.
-  error DelegateCompensation__AlreadyInitialized(address delegate);
+  error DelegateCompensationStaker__AlreadyInitialized(address delegate);
 
   /// @notice Thrown when attempting to call a method that is not supported in the delegate
   /// compensation system.
   /// @dev This error is used for methods that exist in the parent Staker contract but are
   /// intentionally disabled in this implementation as they don't apply to the delegate compensation
   /// model.
-  error DelegateCompensation__MethodNotSupported();
+  error DelegateCompensationStaker__MethodNotSupported();
 
   /// @notice A mapping from a delegate's address to their unique deposit identifier.
   /// @dev This allows for efficient lookup of a delegate's deposit information. A return value of 0
@@ -74,39 +74,39 @@ contract DelegateCompensationStaker is Staker {
 
   /// @notice This method is not supported since there is no voting power to delegate.
   function alterDelegatee(DepositIdentifier, address) public pure override {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
   /// @dev Deposits can be created by calling `initializeDelegateCompensation`.
   function stake(uint256, address) external pure override returns (DepositIdentifier) {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
   /// @dev Deposits can be created by calling `initializeDelegateCompensation`.
   function stake(uint256, address, address) external pure override returns (DepositIdentifier) {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
   function stakeMore(DepositIdentifier, uint256) external pure override {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since there is no voting power to delegate.
   function surrogates(address) public pure override returns (DelegationSurrogate) {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
   function withdraw(DepositIdentifier, uint256) public pure override {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since there is no voting power to delegate.
   function _fetchOrDeploySurrogate(address) internal pure override returns (DelegationSurrogate) {
-    revert DelegateCompensation__MethodNotSupported();
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice Initializes a deposit for a delegate to earn rewards. Delegates will not earn rewards
@@ -127,7 +127,7 @@ contract DelegateCompensationStaker is Staker {
     returns (DepositIdentifier)
   {
     if (DepositIdentifier.unwrap(delegateDepositId[_delegate]) != 0) {
-      revert DelegateCompensation__AlreadyInitialized(_delegate);
+      revert DelegateCompensationStaker__AlreadyInitialized(_delegate);
     }
 
     _checkpointGlobalReward();
