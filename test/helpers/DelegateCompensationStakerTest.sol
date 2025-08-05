@@ -4,9 +4,9 @@ pragma solidity ^0.8.23;
 import {Test} from "forge-std/Test.sol";
 import {DelegateCompensationStakerHarness} from "../harnesses/DelegateCompensationStakerHarness.sol";
 import {Staker} from "staker/Staker.sol";
-import {MockEarningPowerCalculator} from "../mocks/MockEarningPowerCalculator.sol";
-import {ERC20Fake} from "../../lib/stGOV/lib/staker/test/fakes/ERC20Fake.sol";
-import {PercentAssertions} from "../../lib/stGOV/lib/staker/test/helpers/PercentAssertions.sol";
+import {MockEarningPowerCalculator} from "test/mocks/MockEarningPowerCalculator.sol";
+import {ERC20Fake} from "staker-test/fakes/ERC20Fake.sol";
+import {PercentAssertions} from "staker-test/helpers/PercentAssertions.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract DelegateCompensationStakerTest is Test, PercentAssertions {
@@ -18,7 +18,7 @@ contract DelegateCompensationStakerTest is Test, PercentAssertions {
   address public rewardNotifier = makeAddr("rewardNotifier");
   uint256 public constant MAX_BUMP_TIP = 10e18;
 
-  function setUp() public {
+  function setUp() public virtual {
     rewardToken = new ERC20Fake();
     calculator = new MockEarningPowerCalculator();
 
