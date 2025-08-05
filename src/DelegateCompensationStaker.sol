@@ -73,39 +73,40 @@ contract DelegateCompensationStaker is Staker {
   }
 
   /// @notice This method is not supported since there is no voting power to delegate.
-  function alterDelegatee(DepositIdentifier, address) public pure override {
+  function alterDelegatee(DepositIdentifier, address) public pure virtual override {
     revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
   /// @dev Deposits can be created by calling `initializeDelegateCompensation`.
-  function stake(uint256, address) external pure override returns (DepositIdentifier) {
+  function stake(uint256, address) external pure virtual override returns (DepositIdentifier) {
     revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
   /// @dev Deposits can be created by calling `initializeDelegateCompensation`.
-  function stake(uint256, address, address) external pure override returns (DepositIdentifier) {
+  function stake(uint256, address, address)
+    external
+    pure
+    virtual
+    override
+    returns (DepositIdentifier)
+  {
     revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
-  function stakeMore(DepositIdentifier, uint256) external pure override {
+  function stakeMore(DepositIdentifier, uint256) external pure virtual override {
     revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since there is no voting power to delegate.
-  function surrogates(address) public pure override returns (DelegationSurrogate) {
+  function surrogates(address) public pure virtual override returns (DelegationSurrogate) {
     revert DelegateCompensationStaker__MethodNotSupported();
   }
 
   /// @notice This method is not supported since tokens are no longer staked.
-  function withdraw(DepositIdentifier, uint256) public pure override {
-    revert DelegateCompensationStaker__MethodNotSupported();
-  }
-
-  /// @notice This method is not supported since there is no voting power to delegate.
-  function _fetchOrDeploySurrogate(address) internal pure override returns (DelegationSurrogate) {
+  function withdraw(DepositIdentifier, uint256) public pure virtual override {
     revert DelegateCompensationStaker__MethodNotSupported();
   }
 
@@ -152,5 +153,16 @@ contract DelegateCompensationStaker is Staker {
 
     emit DelegateCompensation__Initialized(_delegate, _depositId, _earningPower);
     return _depositId;
+  }
+
+  /// @notice This method is not supported since there is no voting power to delegate.
+  function _fetchOrDeploySurrogate(address)
+    internal
+    pure
+    virtual
+    override
+    returns (DelegationSurrogate)
+  {
+    revert DelegateCompensationStaker__MethodNotSupported();
   }
 }

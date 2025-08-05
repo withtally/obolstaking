@@ -1,0 +1,14 @@
+{
+  "lib/stGOV": {
+    "rev": "df23d0dc0b5baa8855bfc765abecd3f4b3018b76"
+  },
+  "lib/staker": {
+    "tag": {
+      "name": "v1.0.1",
+      "rev": "b5b6f98daf53cf1d678ab3cc219223890b5cda3b"
+    }
+  },
+  "lib/forge-std": {
+    "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
+  }
+}

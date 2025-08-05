@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {console2} from "forge-std/Test.sol";
-import {DelegateCompensationStaker} from "../src/DelegateCompensationStaker.sol";
+import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
 import {DelegateCompensationStakerTest} from "test/helpers/DelegateCompensationStakerTest.sol";
 import {Staker} from "staker/Staker.sol";
 
