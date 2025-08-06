@@ -4,3 +4,6 @@
 [submodule "lib/stGOV"]
 	path = lib/stGOV
 	url = https://github.com/withtally/stGOV
+[submodule "lib/staker"]
+	path = lib/staker
+	url = https://github.com/withtally/staker
