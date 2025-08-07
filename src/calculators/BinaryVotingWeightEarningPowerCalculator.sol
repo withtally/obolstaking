@@ -7,7 +7,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 
-/// @title BinaryVotingPowerEarningPowerCalculator
+/// @title BinaryVotingWeightEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)
 /// @notice Calculates earning power based on voting power snapshots and binary eligibility.
 /// @dev This contract calculates earning power as a combination of:
@@ -24,7 +24,7 @@ import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.
 ///      fixed intervals. We rely on the oracle to avoid frequent changes in eligibility,
 ///      as frequent updates would cause earning power to fluctuate and could enable fee
 ///      griefing when integrated with a staker.
-contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalculator {
+contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalculator {
   /*///////////////////////////////////////////////////////////////
                           Events
   //////////////////////////////////////////////////////////////*/
@@ -48,10 +48,10 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   //////////////////////////////////////////////////////////////*/
 
   /// @notice Thrown when an invalid address is provided.
-  error BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
+  error BinaryVotingWeightEarningPowerCalculator__InvalidAddress();
 
   /// @notice Thrown when an invalid voting power update interval is provided.
-  error BinaryVotingPowerEarningPowerCalculator__InvalidVotingPowerUpdateInterval();
+  error BinaryVotingWeightEarningPowerCalculator__InvalidVotingPowerUpdateInterval();
 
   /*///////////////////////////////////////////////////////////////
                         Immutable Storage
@@ -78,7 +78,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
                             Constructor
   //////////////////////////////////////////////////////////////*/
 
-  /// @notice Initializes the `BinaryVotingPowerEarningPowerCalculator`.
+  /// @notice Initializes the `BinaryVotingWeightEarningPowerCalculator`.
   /// @param _owner The owner of the contract.
   /// @param _oracleEligibilityModule The oracle eligibility module address.
   /// @param _votingPowerToken The voting power token address.
@@ -90,7 +90,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
     uint48 _votingPowerUpdateInterval
   ) Ownable(_owner) {
     if (_votingPowerToken == address(0)) {
-      revert BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
+      revert BinaryVotingWeightEarningPowerCalculator__InvalidAddress();
     }
 
     VOTING_POWER_TOKEN = _votingPowerToken;
@@ -194,7 +194,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// @param _newVotingPowerUpdateInterval The new voting power update interval.
   function _setVotingPowerUpdateInterval(uint48 _newVotingPowerUpdateInterval) internal {
     if (_newVotingPowerUpdateInterval == 0) {
-      revert BinaryVotingPowerEarningPowerCalculator__InvalidVotingPowerUpdateInterval();
+      revert BinaryVotingWeightEarningPowerCalculator__InvalidVotingPowerUpdateInterval();
     }
     emit VotingPowerUpdateIntervalSet(votingPowerUpdateInterval, _newVotingPowerUpdateInterval);
     votingPowerUpdateInterval = _newVotingPowerUpdateInterval;
@@ -204,7 +204,7 @@ contract BinaryVotingPowerEarningPowerCalculator is Ownable, IEarningPowerCalcul
   /// @param _newOracleEligibilityModule The new oracle eligibility module address.
   function _setOracleEligibilityModule(address _newOracleEligibilityModule) internal {
     if (_newOracleEligibilityModule == address(0)) {
-      revert BinaryVotingPowerEarningPowerCalculator__InvalidAddress();
+      revert BinaryVotingWeightEarningPowerCalculator__InvalidAddress();
     }
     emit OracleEligibilityModuleSet(address(oracleEligibilityModule), _newOracleEligibilityModule);
     oracleEligibilityModule = IOracleEligibilityModule(_newOracleEligibilityModule);

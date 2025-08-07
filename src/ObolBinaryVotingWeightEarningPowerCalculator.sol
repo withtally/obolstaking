@@ -3,19 +3,19 @@ pragma solidity ^0.8.23;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {OracleDelegateCompensationInitializer} from "src/OracleDelegateCompensationInitializer.sol";
-import {BinaryVotingPowerEarningPowerCalculator} from
-  "src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
+import {BinaryVotingWeightEarningPowerCalculator} from
+  "src/calculators/BinaryVotingWeightEarningPowerCalculator.sol";
 
-/// @title ObolBinaryVotingPowerEarningPowerCalculator
+/// @title ObolBinaryVotingWeightEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)
-/// @notice A `BinaryVotingPowerEarningPowerCalculator` that initializes delegate
+/// @notice A `BinaryVotingWeightEarningPowerCalculator` that initializes delegate
 /// compensation deposits when scores are updated on the underlying oracle eligibility module.
 /// @dev In most set ups this earning power calculator will be the oracle on the oracle
 /// eligibility module, and the actual oracle will be the `scoreOracle` on this contract.
-contract ObolBinaryVotingPowerEarningPowerCalculator is
+contract ObolBinaryVotingWeightEarningPowerCalculator is
   Ownable,
   OracleDelegateCompensationInitializer,
-  BinaryVotingPowerEarningPowerCalculator
+  BinaryVotingWeightEarningPowerCalculator
 {
   /// @param _owner The address that is able to call protected setter methods.
   /// @param _oracleEligibilityModule The address of the oracle eligibility module for delegate
@@ -37,7 +37,7 @@ contract ObolBinaryVotingPowerEarningPowerCalculator is
       _oracleEligibilityModule,
       _scoreOracle
     )
-    BinaryVotingPowerEarningPowerCalculator(
+    BinaryVotingWeightEarningPowerCalculator(
       _owner,
       _oracleEligibilityModule,
       _votingPowerToken,
