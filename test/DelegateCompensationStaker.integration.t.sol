@@ -3,8 +3,8 @@ pragma solidity ^0.8.23;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {BinaryVotingPowerEarningPowerCalculator} from
-  "src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
+import {BinaryVotingWeightEarningPowerCalculator} from
+  "src/calculators/BinaryVotingWeightEarningPowerCalculator.sol";
 import {BinaryEligibilityOracleEarningPowerCalculator} from
   "staker/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {DelegateCompensationStakerHarness} from
@@ -32,7 +32,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
   address public oraclePauseGuardian = makeAddr("oraclePauseGuardian");
 
   DelegateCompensationStakerHarness public staker;
-  BinaryVotingPowerEarningPowerCalculator public calculator;
+  BinaryVotingWeightEarningPowerCalculator public calculator;
   IOracleEligibilityModule public oracleEligibilityModule;
 
   function setUp() public {
@@ -51,7 +51,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
       )
     );
 
-    calculator = new BinaryVotingPowerEarningPowerCalculator(
+    calculator = new BinaryVotingWeightEarningPowerCalculator(
       owner, address(oracleEligibilityModule), OBOL_TOKEN_ADDRESS, VOTING_POWER_UPDATE_INTERVAL
     );
     staker = new DelegateCompensationStakerHarness(

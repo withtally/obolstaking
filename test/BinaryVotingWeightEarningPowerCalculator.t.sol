@@ -7,11 +7,11 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockVotingPowerToken} from "test/mocks/MockVotingPowerToken.sol";
 
 import {MockOracleEligibilityModule} from "test/mocks/MockOracleEligibilityModule.sol";
-import {BinaryVotingPowerEarningPowerCalculator} from
-  "src/calculators/BinaryVotingPowerEarningPowerCalculator.sol";
+import {BinaryVotingWeightEarningPowerCalculator} from
+  "src/calculators/BinaryVotingWeightEarningPowerCalculator.sol";
 
-contract BinaryVotingPowerEarningPowerCalculatorTest is Test {
-  BinaryVotingPowerEarningPowerCalculator public calculator;
+contract BinaryVotingWeightEarningPowerCalculatorTest is Test {
+  BinaryVotingWeightEarningPowerCalculator public calculator;
   MockOracleEligibilityModule public mockEligibilityModule;
   MockVotingPowerToken public mockVotingPowerToken;
   address public owner = makeAddr("owner");
@@ -20,7 +20,7 @@ contract BinaryVotingPowerEarningPowerCalculatorTest is Test {
   function setUp() public {
     mockEligibilityModule = new MockOracleEligibilityModule();
     mockVotingPowerToken = new MockVotingPowerToken();
-    calculator = new BinaryVotingPowerEarningPowerCalculator(
+    calculator = new BinaryVotingWeightEarningPowerCalculator(
       owner,
       address(mockEligibilityModule),
       address(mockVotingPowerToken),
@@ -105,7 +105,7 @@ contract BinaryVotingPowerEarningPowerCalculatorTest is Test {
   }
 }
 
-contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
+contract Constructor is BinaryVotingWeightEarningPowerCalculatorTest {
   function testFuzz_SetsInitialParameters(
     address _owner,
     address _votingPowerToken,
@@ -116,7 +116,7 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
       _owner, _votingPowerToken, _votingPowerUpdateInterval, _oracleEligibilityModule
     );
 
-    BinaryVotingPowerEarningPowerCalculator _calculator = new BinaryVotingPowerEarningPowerCalculator(
+    BinaryVotingWeightEarningPowerCalculator _calculator = new BinaryVotingWeightEarningPowerCalculator(
       _owner, _oracleEligibilityModule, _votingPowerToken, _votingPowerUpdateInterval
     );
 
@@ -138,10 +138,10 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     );
 
     vm.expectEmit();
-    emit BinaryVotingPowerEarningPowerCalculator.OracleEligibilityModuleSet(
+    emit BinaryVotingWeightEarningPowerCalculator.OracleEligibilityModuleSet(
       address(0), _oracleEligibilityModule
     );
-    new BinaryVotingPowerEarningPowerCalculator(
+    new BinaryVotingWeightEarningPowerCalculator(
       _owner, _oracleEligibilityModule, _votingPowerToken, _votingPowerUpdateInterval
     );
   }
@@ -156,7 +156,7 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
 
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
-    new BinaryVotingPowerEarningPowerCalculator(
+    new BinaryVotingWeightEarningPowerCalculator(
       address(0), _oracleEligibilityModule, _votingPowerToken, _votingPowerUpdateInterval
     );
   }
@@ -171,11 +171,11 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     _assumeSafeVotingPowerUpdateInterval(_votingPowerUpdateInterval);
 
     vm.expectRevert(
-      BinaryVotingPowerEarningPowerCalculator
-        .BinaryVotingPowerEarningPowerCalculator__InvalidAddress
+      BinaryVotingWeightEarningPowerCalculator
+        .BinaryVotingWeightEarningPowerCalculator__InvalidAddress
         .selector
     );
-    new BinaryVotingPowerEarningPowerCalculator(
+    new BinaryVotingWeightEarningPowerCalculator(
       _owner, address(0), _votingPowerToken, _votingPowerUpdateInterval
     );
   }
@@ -190,11 +190,11 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
 
     vm.expectRevert(
-      BinaryVotingPowerEarningPowerCalculator
-        .BinaryVotingPowerEarningPowerCalculator__InvalidAddress
+      BinaryVotingWeightEarningPowerCalculator
+        .BinaryVotingWeightEarningPowerCalculator__InvalidAddress
         .selector
     );
-    new BinaryVotingPowerEarningPowerCalculator(
+    new BinaryVotingWeightEarningPowerCalculator(
       _owner, _oracleEligibilityModule, address(0), _votingPowerUpdateInterval
     );
   }
@@ -209,17 +209,17 @@ contract Constructor is BinaryVotingPowerEarningPowerCalculatorTest {
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
 
     vm.expectRevert(
-      BinaryVotingPowerEarningPowerCalculator
-        .BinaryVotingPowerEarningPowerCalculator__InvalidVotingPowerUpdateInterval
+      BinaryVotingWeightEarningPowerCalculator
+        .BinaryVotingWeightEarningPowerCalculator__InvalidVotingPowerUpdateInterval
         .selector
     );
-    new BinaryVotingPowerEarningPowerCalculator(
+    new BinaryVotingWeightEarningPowerCalculator(
       _owner, _oracleEligibilityModule, _votingPowerToken, 0
     );
   }
 }
 
-contract GetEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
+contract GetEarningPower is BinaryVotingWeightEarningPowerCalculatorTest {
   // Oracle is available && delegate IS eligible → return sqrt(votingPower)
   function testFuzz_AvailableOracleAndEligibleDelegateHasEarningPower(
     address _delegate,
@@ -289,7 +289,7 @@ contract GetEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
   }
 }
 
-contract GetNewEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
+contract GetNewEarningPower is BinaryVotingWeightEarningPowerCalculatorTest {
   // Oracle is available && delegate IS eligible → return (sqrt(votingPower), true)
   function testFuzz_AvailableOracleAndEligibleDelegateHasEarningPower(
     address _delegate,
@@ -368,7 +368,7 @@ contract GetNewEarningPower is BinaryVotingPowerEarningPowerCalculatorTest {
   }
 }
 
-contract SetOracleEligibilityModule is BinaryVotingPowerEarningPowerCalculatorTest {
+contract SetOracleEligibilityModule is BinaryVotingWeightEarningPowerCalculatorTest {
   function testFuzz_SetsOracleEligibilityModule(address _oracleEligibilityModule) public {
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
 
@@ -381,7 +381,7 @@ contract SetOracleEligibilityModule is BinaryVotingPowerEarningPowerCalculatorTe
     _assumeSafeOracleEligibilityModule(_oracleEligibilityModule);
 
     vm.expectEmit();
-    emit BinaryVotingPowerEarningPowerCalculator.OracleEligibilityModuleSet(
+    emit BinaryVotingWeightEarningPowerCalculator.OracleEligibilityModuleSet(
       address(calculator.oracleEligibilityModule()), _oracleEligibilityModule
     );
     vm.prank(owner);
@@ -398,7 +398,7 @@ contract SetOracleEligibilityModule is BinaryVotingPowerEarningPowerCalculatorTe
   }
 }
 
-contract SetVotingPowerUpdateInterval is BinaryVotingPowerEarningPowerCalculatorTest {
+contract SetVotingPowerUpdateInterval is BinaryVotingWeightEarningPowerCalculatorTest {
   function testFuzz_SetsVotingPowerUpdateInterval(uint48 _votingPowerUpdateInterval) public {
     _assumeSafeVotingPowerUpdateInterval(_votingPowerUpdateInterval);
 
@@ -413,7 +413,7 @@ contract SetVotingPowerUpdateInterval is BinaryVotingPowerEarningPowerCalculator
     _assumeSafeVotingPowerUpdateInterval(_votingPowerUpdateInterval);
 
     vm.expectEmit();
-    emit BinaryVotingPowerEarningPowerCalculator.VotingPowerUpdateIntervalSet(
+    emit BinaryVotingWeightEarningPowerCalculator.VotingPowerUpdateIntervalSet(
       calculator.votingPowerUpdateInterval(), _votingPowerUpdateInterval
     );
     vm.prank(owner);
