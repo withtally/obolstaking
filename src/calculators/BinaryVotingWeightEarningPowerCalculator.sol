@@ -175,7 +175,7 @@ contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalcu
   /// @notice Gets the square root of the votes of a delegate at the most recent snapshot block.
   /// @param _delegatee The address of the delegate to query.
   /// @return uint256 The square root of the votes of the delegate at the snapshot block.
-  function _getSnapshotVotes(address _delegatee) internal view returns (uint256) {
+  function _getSnapshotVotesSqrt(address _delegatee) internal view returns (uint256) {
     return Math.sqrt(IVotes(VOTING_POWER_TOKEN).getPastVotes(_delegatee, _getSnapshotBlock()));
   }
 
@@ -187,7 +187,7 @@ contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalcu
   /// Eligibility is checked in real-time, while voting power is snapshotted at intervals.
   function _getEarningPower(address _delegatee) internal view returns (uint256) {
     if (_isOracleUnavailable() || oracleEligibilityModule.isDelegateeEligible(_delegatee)) {
-      return _getSnapshotVotes(_delegatee);
+      return _getSnapshotVotesSqrt(_delegatee);
     }
     return 0;
   }
