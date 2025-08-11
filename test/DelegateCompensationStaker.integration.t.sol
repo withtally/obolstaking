@@ -639,7 +639,7 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
 
     _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
 
-	// TODO: Document wait for block on initialization and test after 1 epoch
+    // TODO: Document wait for block on initialization and test after 1 epoch
     vm.roll(block.number + 1);
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
 

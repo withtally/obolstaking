@@ -38,7 +38,7 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
 
   /// @notice Returns the oracle eligibility module instance.
   /// @return The oracle eligibility module interface.
-  function getOracleEligibilityModule() public virtual returns (IOracleEligibilityModule);
+  function getOracleEligibilityModule() public view virtual returns (IOracleEligibilityModule);
 
   /// @notice Updates a delegatee's score and initializes their compensation if eligible.
   /// @dev Only callable by the score oracle. Automatically initializes delegate compensation
