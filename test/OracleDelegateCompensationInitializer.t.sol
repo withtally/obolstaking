@@ -17,6 +17,8 @@ import {MockEarningPowerCalculator} from "test/mocks/MockEarningPowerCalculator.
 import {DelegateCompensationStakerTest} from "test/helpers/DelegateCompensationStakerTest.sol";
 
 contract OracleDelegateCompensationInitializerFake is OracleDelegateCompensationInitializer {
+  IOracleEligibilityModule public immutable ORACLE_ELIGIBILITY_MODULE;
+
   constructor(
     address _owner,
     address _delegateCompensationStaker,
@@ -24,12 +26,14 @@ contract OracleDelegateCompensationInitializerFake is OracleDelegateCompensation
     address _scoreOracle
   )
     Ownable(_owner)
-    OracleDelegateCompensationInitializer(
-      _delegateCompensationStaker,
-      _oracleEligibilityModule,
-      _scoreOracle
-    )
-  {}
+    OracleDelegateCompensationInitializer(_delegateCompensationStaker, _scoreOracle)
+  {
+    ORACLE_ELIGIBILITY_MODULE = IOracleEligibilityModule(_oracleEligibilityModule);
+  }
+
+  function getOracleEligibilityModule() public virtual override returns (IOracleEligibilityModule) {
+    return ORACLE_ELIGIBILITY_MODULE;
+  }
 }
 
 contract OracleDelegateCompensationInitializerTest is DelegateCompensationStakerTest {

@@ -19,8 +19,6 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
 
   /// @notice The immutable address of the delegate compensation staker contract.
   address public immutable DELEGATE_COMPENSATION_STAKER;
-  /// @notice The oracle eligibility module used to check delegate eligibility.
-  IOracleEligibilityModule private ORACLE_ELIGIBILITY_MODULE;
   /// @notice The address with the authority to update delegatee scores.
   address public scoreOracle;
 
@@ -32,23 +30,15 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
 
   /// @notice Initializes the contract with necessary addresses.
   /// @param _delegateCompensationStaker The address of the delegate compensation staker contract.
-  /// @param _oracleEligibilityModule The address of the oracle eligibility module.
   /// @param _scoreOracle The initial address authorized to update delegate scores.
-  constructor(
-    address _delegateCompensationStaker,
-    address _oracleEligibilityModule,
-    address _scoreOracle
-  ) {
+  constructor(address _delegateCompensationStaker, address _scoreOracle) {
     DELEGATE_COMPENSATION_STAKER = _delegateCompensationStaker;
-    ORACLE_ELIGIBILITY_MODULE = IOracleEligibilityModule(_oracleEligibilityModule);
     _setScoreOracle(_scoreOracle);
   }
 
   /// @notice Returns the oracle eligibility module instance.
   /// @return The oracle eligibility module interface.
-  function getOracleEligibilityModule() public virtual returns (IOracleEligibilityModule) {
-    return ORACLE_ELIGIBILITY_MODULE;
-  }
+  function getOracleEligibilityModule() public virtual returns (IOracleEligibilityModule);
 
   /// @notice Updates a delegatee's score and initializes their compensation if eligible.
   /// @dev Only callable by the score oracle. Automatically initializes delegate compensation
@@ -59,10 +49,10 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
     _revertIfNotScoreOracle();
     DelegateCompensationStaker _delegateCompensationStaker =
       DelegateCompensationStaker(DELEGATE_COMPENSATION_STAKER);
-    ORACLE_ELIGIBILITY_MODULE.updateDelegateeScore(_delegatee, _newScore);
+    getOracleEligibilityModule().updateDelegateeScore(_delegatee, _newScore);
     if (
       Staker.DepositIdentifier.unwrap(_delegateCompensationStaker.delegateDepositId(_delegatee))
-        == 0 && ORACLE_ELIGIBILITY_MODULE.isDelegateeEligible(_delegatee)
+        == 0 && getOracleEligibilityModule().isDelegateeEligible(_delegatee)
     ) _delegateCompensationStaker.initializeDelegateCompensation(_delegatee);
   }
 
