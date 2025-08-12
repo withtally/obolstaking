@@ -164,7 +164,7 @@ contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalcu
   /// @notice Gets the current voting power snapshot block number.
   /// @return _snapshotBlock The block number that represents the most recent voting power snapshot.
   /// @dev The snapshot block is calculated by finding how many complete intervals have passed
-  ///      since the start block and multiplying by the interval.
+  /// since the start block and multiplying by the interval.
   function _getSnapshotBlock() internal view returns (uint48 _snapshotBlock) {
     uint256 _safeBlockNumber =
       block.number > SNAPSHOT_START_BLOCK ? block.number - 1 : SNAPSHOT_START_BLOCK;
@@ -175,6 +175,9 @@ contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalcu
   /// @notice Gets the square root of the votes of a delegate at the most recent snapshot block.
   /// @param _delegatee The address of the delegate to query.
   /// @return uint256 The square root of the votes of the delegate at the snapshot block.
+  /// @dev This function will typically revert if called in the same block as `SNAPSHOT_START_BLOCK`
+  /// as most IVotes tokens do not allow calling `getPastVotes` with a timepoint greater than
+  /// or equal to the current block.
   function _getSnapshotVotesSqrt(address _delegatee) internal view returns (uint256) {
     return Math.sqrt(IVotes(VOTING_POWER_TOKEN).getPastVotes(_delegatee, _getSnapshotBlock()));
   }
