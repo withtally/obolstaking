@@ -186,7 +186,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 contract DelegateCompensationStakerIntegrationTest is
   DelegateCompensationStakerIntegrationTestBase
 {
-  function testForkFuzz_RevertIf_InitializeDelegateAtContractDeployment(
+  function testForkFuzz_RevertIf_InitializeDelegateCompensationAtContractDeployment(
     address _delegate,
     uint256 _votingPower,
     uint256 _percentDuration
@@ -201,7 +201,7 @@ contract DelegateCompensationStakerIntegrationTest is
     staker.initializeDelegateCompensation(_delegate);
   }
 
-  function testForkFuzz_InitializeDeployAtStartOfSecondEpoch(
+  function testForkFuzz_InitializeDelegateCompensationAtStartOfSecondEpoch(
     address _delegate,
     uint256 _votingPower,
     uint256 _percentDuration
