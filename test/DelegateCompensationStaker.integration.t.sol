@@ -186,6 +186,8 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 contract DelegateCompensationStakerIntegrationTest is
   DelegateCompensationStakerIntegrationTestBase
 {
+		// test initialize on deployment there should be no revert
+		// test initialize on the second vote update epoch there should be no revert
   function testForkFuzz_SingleDelegateAccruesRewardProportionalToVotingPower(
     address _delegate,
     uint256 _votingPower,
