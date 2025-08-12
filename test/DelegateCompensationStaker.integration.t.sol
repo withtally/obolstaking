@@ -186,8 +186,48 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 contract DelegateCompensationStakerIntegrationTest is
   DelegateCompensationStakerIntegrationTestBase
 {
-		// test initialize on deployment there should be no revert
-		// test initialize on the second vote update epoch there should be no revert
+  function testForkFuzz_RevertIf_InitializeDelegateAtContractDeployment(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _percentDuration
+  ) public {
+    _assumeValidDelegate(_delegate);
+    _percentDuration = bound(_percentDuration, 1, 100);
+    _votingPower = _boundToValidVotingPower(_votingPower);
+
+    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
+
+    vm.expectRevert(bytes("ERC20Votes: block not yet mined"));
+    staker.initializeDelegateCompensation(_delegate);
+  }
+
+  function testForkFuzz_InitializeDeployAtStartOfSecondEpoch(
+    address _delegate,
+    uint256 _votingPower,
+    uint256 _percentDuration
+  ) public {
+    _assumeValidDelegate(_delegate);
+    _percentDuration = bound(_percentDuration, 1, 100);
+    _votingPower = _boundToValidVotingPower(_votingPower);
+
+    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
+
+    vm.roll(block.number + calculator.votingPowerUpdateInterval());
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+
+    _mintTransferAndNotifyReward();
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _expectedEarningPower = uint256(Math.sqrt(_votingPower));
+    uint256 _expectedUnclaimedReward =
+      _calculateExpectedUnclaimedReward(_delegate, _percentDuration);
+
+    assertEq(staker.delegateDepositId(_delegate), _depositId);
+    assertEq(Staker.DepositIdentifier.unwrap(_depositId), 1);
+    assertEq(staker.depositorTotalEarningPower(_delegate), _expectedEarningPower);
+    assertLteWithinOnePercent(staker.unclaimedReward(_depositId), _expectedUnclaimedReward);
+  }
+
   function testForkFuzz_SingleDelegateAccruesRewardProportionalToVotingPower(
     address _delegate,
     uint256 _votingPower,
