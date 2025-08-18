@@ -164,16 +164,21 @@ contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalcu
   /// @notice Gets the current voting power snapshot block number.
   /// @return _snapshotBlock The block number that represents the most recent voting power snapshot.
   /// @dev The snapshot block is calculated by finding how many complete intervals have passed
-  ///      since the start block and multiplying by the interval.
+  /// since the start block and multiplying by the interval.
   function _getSnapshotBlock() internal view returns (uint48 _snapshotBlock) {
-    uint256 _intervalPassed = (block.number - SNAPSHOT_START_BLOCK) / votingPowerUpdateInterval;
+    uint256 _safeBlockNumber =
+      block.number > SNAPSHOT_START_BLOCK ? block.number - 1 : SNAPSHOT_START_BLOCK;
+    uint256 _intervalPassed = (_safeBlockNumber - SNAPSHOT_START_BLOCK) / votingPowerUpdateInterval;
     _snapshotBlock = uint48(SNAPSHOT_START_BLOCK + _intervalPassed * votingPowerUpdateInterval);
   }
 
   /// @notice Gets the square root of the votes of a delegate at the most recent snapshot block.
   /// @param _delegatee The address of the delegate to query.
   /// @return uint256 The square root of the votes of the delegate at the snapshot block.
-  function _getSnapshotVotes(address _delegatee) internal view returns (uint256) {
+  /// @dev This function will typically revert if called in the same block as `SNAPSHOT_START_BLOCK`
+  /// as most IVotes tokens do not allow calling `getPastVotes` with a timepoint greater than
+  /// or equal to the current block.
+  function _getSnapshotVotesSqrt(address _delegatee) internal view returns (uint256) {
     return Math.sqrt(IVotes(VOTING_POWER_TOKEN).getPastVotes(_delegatee, _getSnapshotBlock()));
   }
 
@@ -185,7 +190,7 @@ contract BinaryVotingWeightEarningPowerCalculator is Ownable, IEarningPowerCalcu
   /// Eligibility is checked in real-time, while voting power is snapshotted at intervals.
   function _getEarningPower(address _delegatee) internal view returns (uint256) {
     if (_isOracleUnavailable() || oracleEligibilityModule.isDelegateeEligible(_delegatee)) {
-      return _getSnapshotVotes(_delegatee);
+      return _getSnapshotVotesSqrt(_delegatee);
     }
     return 0;
   }
