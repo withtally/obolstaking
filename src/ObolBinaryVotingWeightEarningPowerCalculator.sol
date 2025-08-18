@@ -42,7 +42,13 @@ contract ObolBinaryVotingWeightEarningPowerCalculator is
     )
   {}
 
-  function getOracleEligibilityModule() public virtual override returns (IOracleEligibilityModule) {
+  function getOracleEligibilityModule()
+    public
+    view
+    virtual
+    override
+    returns (IOracleEligibilityModule)
+  {
     return oracleEligibilityModule;
   }
 }
