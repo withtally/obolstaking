@@ -8,16 +8,16 @@ import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {TransferRewardNotifier} from "staker/notifiers/TransferRewardNotifier.sol";
+import {RewardTokenNotifierBase} from "staker/notifiers/RewardTokenNotifierBase.sol";
 
 abstract contract BaseObolDelegateCompensationDeploy is Script {
   address public deployer;
   uint256 public deployerPrivateKey;
-  uint256 REWARD_INTERVAL = 30 days; // Arbitrary interval
-  uint256 REWARD_AMOUNT = 10_000e18; // Aribitrary amount
+  uint256 public REWARD_INTERVAL; // Arbitrary interval
+  uint256 public REWARD_AMOUNT; // Aribitrary amount
 
   struct DelegateCompensationConfig {
     address owner;
-    address oracleEligibilityModule;
     address votingPowerToken;
     uint48 votingPowerUpdateInterval;
     address scoreOracle;
@@ -41,6 +41,29 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     virtual
     returns (DelegateCompensationConfig memory);
 
+  function _deployEarningPowerCalculator(address _delegateComp)
+    internal
+    virtual
+    returns (IEarningPowerCalculator);
+
+  function _deployRewardNotifier(DelegateCompensationStaker _delegateComp, IERC20 _rewardToken)
+    internal
+    virtual
+    returns (RewardTokenNotifierBase)
+  {
+    vm.broadcast(deployer);
+    TransferRewardNotifier _transferNotifier =
+      new TransferRewardNotifier(_delegateComp, REWARD_AMOUNT, REWARD_INTERVAL, deployer);
+
+    vm.broadcast(deployer);
+    _rewardToken.transfer(address(_transferNotifier), REWARD_AMOUNT);
+    console2.log("Transferred to Reward Notifier", REWARD_AMOUNT);
+    vm.broadcast(deployer);
+    _transferNotifier.notify();
+    console2.log("Notified first reward");
+    return _transferNotifier;
+  }
+
   function run()
     public
     virtual
@@ -57,9 +80,13 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     );
 
     vm.broadcast(deployer);
+    IEarningPowerCalculator _oracleEligibilityModule =
+      _deployEarningPowerCalculator(address(_delegateComp));
+
+    vm.broadcast(deployer);
     ObolBinaryVotingWeightEarningPowerCalculator _epc = new ObolBinaryVotingWeightEarningPowerCalculator(
       _delegateCompParams.owner,
-      _delegateCompParams.oracleEligibilityModule,
+      address(_oracleEligibilityModule),
       _delegateCompParams.votingPowerToken,
       _delegateCompParams.votingPowerUpdateInterval,
       address(_delegateComp),
@@ -69,20 +96,11 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     vm.broadcast(deployer);
     _delegateComp.setEarningPowerCalculator(address(_epc));
 
-
-    vm.broadcast(deployer);
-    TransferRewardNotifier _transferNotifier =
-      new TransferRewardNotifier(_delegateComp, REWARD_AMOUNT, REWARD_INTERVAL, deployer);
+    RewardTokenNotifierBase _transferNotifier =
+      _deployRewardNotifier(_delegateComp, _delegateCompParams.rewardToken);
 
     vm.broadcast(deployer);
     _delegateComp.setRewardNotifier(address(_transferNotifier), true);
-
-    vm.broadcast(deployer);
-    _delegateCompParams.rewardToken.transfer(address(_transferNotifier), REWARD_AMOUNT);
-    console2.log("Transferred to Reward Notifier", REWARD_AMOUNT);
-    vm.broadcast(deployer);
-    _transferNotifier.notify();
-    console2.log("Notified first reward");
 
     vm.broadcast(deployer);
     _delegateComp.setAdmin(_delegateCompParams.admin);
