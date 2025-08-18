@@ -16,6 +16,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DelegateCompensationStakerTest} from "test/helpers/DelegateCompensationStakerTest.sol";
 import {PercentAssertions} from "staker-test/helpers/PercentAssertions.sol";
 import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
+import {ObolBinaryVotingWeightEarningPowerCalculator} from "src/ObolBinaryVotingWeightEarningPowerCalculator.sol";
+import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 
 contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertions {
   address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
@@ -33,30 +35,35 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
   DelegateCompensationStakerHarness public staker;
   BinaryVotingWeightEarningPowerCalculator public calculator;
-  IOracleEligibilityModule public oracleEligibilityModule;
+  BinaryEligibilityOracleEarningPowerCalculator public oracleEligibilityModule;
 
   function setUp() public {
     vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 22_773_964);
 
-    oracleEligibilityModule = IOracleEligibilityModule(
-      address(
+    staker = new DelegateCompensationStakerHarness(
+      IERC20(OBOL_TOKEN_ADDRESS), IEarningPowerCalculator(makeAddr("hi")), MAX_BUMP_TIP, admin
+    );
+
+    oracleEligibilityModule =
         new BinaryEligibilityOracleEarningPowerCalculator(
           owner,
-          scoreOracle,
+          address(0),
           STALE_ORACLE_WINDOW,
           oraclePauseGuardian,
           DELEGATE_ELIGIBILITY_THRESHOLD,
           UPDATE_ELIGIBILITY_DELAY
-        )
-      )
     );
 
-    calculator = new BinaryVotingWeightEarningPowerCalculator(
-      owner, address(oracleEligibilityModule), OBOL_TOKEN_ADDRESS, VOTING_POWER_UPDATE_INTERVAL
+    calculator = new ObolBinaryVotingWeightEarningPowerCalculator(
+      owner, address(oracleEligibilityModule), OBOL_TOKEN_ADDRESS, VOTING_POWER_UPDATE_INTERVAL, address(staker), scoreOracle
     );
-    staker = new DelegateCompensationStakerHarness(
-      IERC20(OBOL_TOKEN_ADDRESS), calculator, MAX_BUMP_TIP, admin
-    );
+
+	vm.prank(owner);
+	oracleEligibilityModule.setScoreOracle(address(calculator));
+
+	vm.prank(admin);
+	staker.setEarningPowerCalculator(address(calculator));
+    vm.roll(block.number + 1);
   }
 
   function _assumeValidDelegate(address _delegate) internal view {
@@ -87,7 +94,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     ).delegateeEligibilityThresholdScore();
     uint256 _newScore = _eligibility ? _threshold + 1 : _threshold - 1;
     vm.prank(scoreOracle);
-    BinaryEligibilityOracleEarningPowerCalculator(address(oracleEligibilityModule))
+    ObolBinaryVotingWeightEarningPowerCalculator(address(calculator))
       .updateDelegateeScore(_delegatee, _newScore);
   }
 
@@ -683,7 +690,7 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
