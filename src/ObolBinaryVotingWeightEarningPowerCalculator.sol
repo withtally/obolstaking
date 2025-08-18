@@ -5,6 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {OracleDelegateCompensationInitializer} from "src/OracleDelegateCompensationInitializer.sol";
 import {BinaryVotingWeightEarningPowerCalculator} from
   "src/calculators/BinaryVotingWeightEarningPowerCalculator.sol";
+import {IOracleEligibilityModule} from "src/interfaces/IOracleEligibilityModule.sol";
 
 /// @title ObolBinaryVotingWeightEarningPowerCalculator
 /// @author [ScopeLift](https://scopelift.co)
@@ -32,11 +33,7 @@ contract ObolBinaryVotingWeightEarningPowerCalculator is
     address _delegateCompensationStaker,
     address _scoreOracle
   )
-    OracleDelegateCompensationInitializer(
-      _delegateCompensationStaker,
-      _oracleEligibilityModule,
-      _scoreOracle
-    )
+    OracleDelegateCompensationInitializer(_delegateCompensationStaker, _scoreOracle)
     BinaryVotingWeightEarningPowerCalculator(
       _owner,
       _oracleEligibilityModule,
@@ -44,4 +41,8 @@ contract ObolBinaryVotingWeightEarningPowerCalculator is
       _votingPowerUpdateInterval
     )
   {}
+
+  function getOracleEligibilityModule() public virtual override returns (IOracleEligibilityModule) {
+    return oracleEligibilityModule;
+  }
 }
