@@ -72,10 +72,6 @@ contract OracleDelegateCompensationInitializerTest is DelegateCompensationStaker
   }
 }
 
-// 1. Revert if not score oracle
-// 2. Update score when not eligible, but don't initialize
-// 3. Update score when delegate initialized
-// 4. Initialize delegate when above the threshold and not initialized
 contract UpdateDelegateeScore is OracleDelegateCompensationInitializerTest {
   function testFuzz_UpdatesScoreWhenNotEligible(address _delegatee, uint256 _score) public {
     // Set delegatee as not eligible
@@ -158,6 +154,240 @@ contract UpdateDelegateeScore is OracleDelegateCompensationInitializerTest {
       )
     );
     delegateCompInitializer.updateDelegateeScore(_delegatee, _score);
+  }
+}
+
+contract UpdateDelegateeScores is OracleDelegateCompensationInitializerTest {
+  function testFuzz_UpdateASingleDelegateeScoreOnce(
+    address[1] memory _delegatees,
+    uint256[1] memory _scores
+  ) public {
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
+      new IOracleEligibilityModule.DelegateeScoreUpdate[](3);
+
+    updates[0] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[0],
+      newScore: _scores[0]
+    });
+
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[0], true);
+
+    vm.prank(scoreOracle);
+    delegateCompInitializer.updateDelegateeScores(updates);
+
+    // Deposits have been created
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[0])), 1
+    );
+    assertEq(mockEligibilityModule.__delegateeScores(_delegatees[0]), _scores[0]);
+  }
+
+  function testFuzz_UpdateASingleDelegateeScoreMultipleTimes(
+    address[1] memory _delegatees,
+    uint256[2] memory _scores
+  ) public {
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
+      new IOracleEligibilityModule.DelegateeScoreUpdate[](3);
+
+    updates[0] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[0],
+      newScore: _scores[0]
+    });
+    updates[1] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[0],
+      newScore: _scores[1]
+    });
+
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[0], true);
+
+    vm.prank(scoreOracle);
+    delegateCompInitializer.updateDelegateeScores(updates);
+
+    // Deposits have been created
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[0])), 1
+    );
+    assertEq(mockEligibilityModule.__delegateeScores(_delegatees[0]), _scores[1]);
+  }
+
+  function testFuzz_UpdatesMultipleDelegateeScoresAtOnce(
+    address[3] memory _delegatees,
+    uint256[3] memory _scores
+  ) public {
+    vm.assume(
+      _delegatees[0] != _delegatees[1] && _delegatees[1] != _delegatees[2]
+        && _delegatees[0] != _delegatees[2]
+    );
+
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
+      new IOracleEligibilityModule.DelegateeScoreUpdate[](3);
+
+    updates[0] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[0],
+      newScore: _scores[0]
+    });
+    updates[1] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[1],
+      newScore: _scores[1]
+    });
+    updates[2] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[2],
+      newScore: _scores[2]
+    });
+
+    for (uint256 i = 0; i < 3; i++) {
+      mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[i], true);
+    }
+
+    vm.prank(scoreOracle);
+    delegateCompInitializer.updateDelegateeScores(updates);
+
+    // Deposits have been created
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[0])), 1
+    );
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[1])), 2
+    );
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[2])), 3
+    );
+
+    // Verify scores were stored correctly
+    assertEq(mockEligibilityModule.__delegateeScores(_delegatees[0]), _scores[0]);
+    assertEq(mockEligibilityModule.__delegateeScores(_delegatees[1]), _scores[1]);
+    assertEq(mockEligibilityModule.__delegateeScores(_delegatees[2]), _scores[2]);
+  }
+
+  function testFuzz_EmitsAnEventForEachDelegateeSInitialized(
+    address[3] memory _delegatees,
+    uint256[3] memory _scores,
+    uint256[3] memory _earningPowers
+  ) public {
+    vm.assume(
+      _delegatees[0] != _delegatees[1] && _delegatees[1] != _delegatees[2]
+        && _delegatees[0] != _delegatees[2]
+    );
+    _earningPowers[0] = bound(_earningPowers[0], 1, type(uint96).max);
+    _earningPowers[1] = bound(_earningPowers[1], 1, type(uint96).max);
+    _earningPowers[2] = bound(_earningPowers[2], 1, type(uint96).max);
+
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
+      new IOracleEligibilityModule.DelegateeScoreUpdate[](3);
+
+    updates[0] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[0],
+      newScore: _scores[0]
+    });
+    updates[1] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[1],
+      newScore: _scores[1]
+    });
+    updates[2] = IOracleEligibilityModule.DelegateeScoreUpdate({
+      delegatee: _delegatees[2],
+      newScore: _scores[2]
+    });
+
+    for (uint256 i = 0; i < 3; i++) {
+      mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[i], true);
+      earningPowerCalculator.setDelegateEarningPower(_delegatees[i], _earningPowers[i]);
+    }
+
+    vm.expectEmit();
+    emit DelegateCompensationStaker.DelegateCompensation__Initialized(
+      _delegatees[0], Staker.DepositIdentifier.wrap(1), _earningPowers[0]
+    );
+    vm.expectEmit();
+    emit DelegateCompensationStaker.DelegateCompensation__Initialized(
+      _delegatees[1], Staker.DepositIdentifier.wrap(2), _earningPowers[1]
+    );
+    vm.expectEmit();
+    emit DelegateCompensationStaker.DelegateCompensation__Initialized(
+      _delegatees[2], Staker.DepositIdentifier.wrap(3), _earningPowers[2]
+    );
+
+    vm.prank(scoreOracle);
+    delegateCompInitializer.updateDelegateeScores(updates);
+  }
+
+  function testFuzz_UpdatesMixedEligibilityStates(
+    address[4] memory _delegatees,
+    uint256[4] memory _scores,
+    uint256[2] memory _earningPowers
+  ) public {
+    vm.assume(
+      _delegatees[0] != _delegatees[1] && _delegatees[1] != _delegatees[2]
+        && _delegatees[2] != _delegatees[3] && _delegatees[0] != _delegatees[2]
+        && _delegatees[0] != _delegatees[3] && _delegatees[1] != _delegatees[3]
+    );
+    _earningPowers[0] = bound(_earningPowers[0], 1, type(uint96).max);
+    _earningPowers[1] = bound(_earningPowers[1], 1, type(uint96).max);
+
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
+      new IOracleEligibilityModule.DelegateeScoreUpdate[](4);
+
+    for (uint256 i = 0; i < 4; i++) {
+      updates[i] = IOracleEligibilityModule.DelegateeScoreUpdate({
+        delegatee: _delegatees[i],
+        newScore: _scores[i]
+      });
+    }
+
+    // Set mixed eligibility states - alternating eligible/not eligible
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[0], true);
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[1], false);
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[2], true);
+    mockEligibilityModule.__setMockDelegateeEligibility(_delegatees[3], false);
+
+    earningPowerCalculator.setDelegateEarningPower(_delegatees[0], _earningPowers[0]);
+    earningPowerCalculator.setDelegateEarningPower(_delegatees[2], _earningPowers[1]);
+
+    // Initialize delegatee[2] beforehand to test already initialized case
+    DelegateCompensationStaker.DepositIdentifier delegatee2DepositId =
+      delegateCompStaker.initializeDelegateCompensation(_delegatees[2]);
+
+    vm.prank(scoreOracle);
+    delegateCompInitializer.updateDelegateeScores(updates);
+
+    // Check results
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[0])), 2
+    );
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[1])), 0
+    );
+    assertEq(delegateCompStaker.delegateDepositId(_delegatees[2]), delegatee2DepositId);
+    assertEq(
+      Staker.DepositIdentifier.unwrap(delegateCompStaker.delegateDepositId(_delegatees[3])), 0
+    );
+  }
+
+  function test_DoesNotRevertWhenGivenEmptyArray() public {
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
+      new IOracleEligibilityModule.DelegateeScoreUpdate[](0);
+
+    vm.prank(scoreOracle);
+    delegateCompInitializer.updateDelegateeScores(updates);
+  }
+
+  function testFuzz_RevertIf_CallerIsNotScoreOracle(
+    address _caller,
+    IOracleEligibilityModule.DelegateeScoreUpdate[] memory _updates
+  ) public {
+    vm.assume(_caller != scoreOracle);
+    vm.assume(_updates.length > 0 && _updates.length < 10);
+
+    vm.prank(_caller);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        OracleDelegateCompensationInitializer
+          .OracleDelegateCompensationInitializer__Unauthorized
+          .selector,
+        bytes32("not oracle"),
+        _caller
+      )
+    );
+    delegateCompInitializer.updateDelegateeScores(_updates);
   }
 }
 

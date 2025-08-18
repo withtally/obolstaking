@@ -53,6 +53,7 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
   function updateDelegateeScores(
     IOracleEligibilityModule.DelegateeScoreUpdate[] calldata _delegateeScoreUpdates
   ) public virtual {
+    _revertIfNotScoreOracle();
     for (uint256 _i = 0; _i < _delegateeScoreUpdates.length; _i++) {
       IOracleEligibilityModule.DelegateeScoreUpdate calldata _update = _delegateeScoreUpdates[_i];
       _updateDelegateeScore(_update.delegatee, _update.newScore);

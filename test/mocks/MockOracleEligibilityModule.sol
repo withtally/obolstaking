@@ -11,6 +11,7 @@ contract MockOracleEligibilityModule is IOracleEligibilityModule {
   bool public __mockIsOraclePaused;
   bool public __mockIsOracleStale;
   mapping(address => bool) public __mockDelegateeEligibility;
+  mapping(address => uint256) public __delegateeScores;
 
   /*///////////////////////////////////////////////////////////////
                           External Functions
@@ -28,13 +29,19 @@ contract MockOracleEligibilityModule is IOracleEligibilityModule {
     return __mockDelegateeEligibility[_delegatee];
   }
 
-  function updateDelegateeScore(address _delegatee, uint256 _newScore) external virtual override {}
+  function updateDelegateeScore(address _delegatee, uint256 _newScore) external virtual override {
+    __delegateeScores[_delegatee] = _newScore;
+  }
 
   function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates)
     external
     virtual
     override
-  {}
+  {
+    for (uint256 _i = 0; _i < _delegateeScoreUpdates.length; _i++) {
+      __delegateeScores[_delegateeScoreUpdates[_i].delegatee] = _delegateeScoreUpdates[_i].newScore;
+    }
+  }
 
   /*///////////////////////////////////////////////////////////////
                         Custom Functions
