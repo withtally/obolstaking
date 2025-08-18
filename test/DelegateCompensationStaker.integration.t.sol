@@ -63,7 +63,6 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
 	vm.prank(admin);
 	staker.setEarningPowerCalculator(address(calculator));
-    vm.roll(block.number + 1);
   }
 
   function _assumeValidDelegate(address _delegate) internal view {
@@ -93,6 +92,10 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
       address(oracleEligibilityModule)
     ).delegateeEligibilityThresholdScore();
     uint256 _newScore = _eligibility ? _threshold + 1 : _threshold - 1;
+
+    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
+	// TODO: Make sure to test the 0 voting power case
+    vm.roll(block.number + 1);
     vm.prank(scoreOracle);
     ObolBinaryVotingWeightEarningPowerCalculator(address(calculator))
       .updateDelegateeScore(_delegatee, _newScore);
@@ -688,8 +691,6 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
 
     _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
 
-    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
-    vm.roll(block.number + 1);
     Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
