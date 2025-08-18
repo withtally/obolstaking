@@ -30,6 +30,12 @@ contract MockOracleEligibilityModule is IOracleEligibilityModule {
 
   function updateDelegateeScore(address _delegatee, uint256 _newScore) external virtual override {}
 
+  function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates)
+    external
+    virtual
+    override
+  {}
+
   /*///////////////////////////////////////////////////////////////
                         Custom Functions
   //////////////////////////////////////////////////////////////*/

@@ -47,6 +47,19 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
   /// @param _newScore The new score value to set for the delegate.
   function updateDelegateeScore(address _delegatee, uint256 _newScore) public virtual {
     _revertIfNotScoreOracle();
+    _updateDelegateeScore(_delegatee, _newScore);
+  }
+
+  function updateDelegateeScores(
+    IOracleEligibilityModule.DelegateeScoreUpdate[] calldata _delegateeScoreUpdates
+  ) public virtual {
+    for (uint256 _i = 0; _i < _delegateeScoreUpdates.length; _i++) {
+      IOracleEligibilityModule.DelegateeScoreUpdate calldata _update = _delegateeScoreUpdates[_i];
+      _updateDelegateeScore(_update.delegatee, _update.newScore);
+    }
+  }
+
+  function _updateDelegateeScore(address _delegatee, uint256 _newScore) internal virtual {
     DelegateCompensationStaker _delegateCompensationStaker =
       DelegateCompensationStaker(DELEGATE_COMPENSATION_STAKER);
     getOracleEligibilityModule().updateDelegateeScore(_delegatee, _newScore);
