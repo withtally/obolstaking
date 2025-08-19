@@ -11,7 +11,7 @@ import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
 /// @notice Abstract contract that manages delegate score updates and compensation initialization.
 /// @dev This contract bridges the oracle eligibility module with the delegate compensation staker,
 /// automatically initializing delegate compensation when they become eligible.
-abstract contract OracleDelegateCompensationInitializer is Ownable, IOracleEligibilityModule {
+abstract contract OracleDelegateCompensationInitializer is Ownable {
   /// @notice Emitted when the `scoreOracle` address is updated.
   /// @param oldScoreOracle The address of the previous `scoreOracle`.
   /// @param newScoreOracle The address of the new `scoreOracle`.
