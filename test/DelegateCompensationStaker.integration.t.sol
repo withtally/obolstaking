@@ -42,7 +42,7 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 22_773_964);
 
     staker = new DelegateCompensationStakerHarness(
-      IERC20(OBOL_TOKEN_ADDRESS), IEarningPowerCalculator(makeAddr("hi")), MAX_BUMP_TIP, admin
+      IERC20(OBOL_TOKEN_ADDRESS), IEarningPowerCalculator(address(this)), MAX_BUMP_TIP, admin
     );
 
     oracleEligibilityModule = new BinaryEligibilityOracleEarningPowerCalculator(
@@ -99,7 +99,6 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     uint256 _newScore = _eligibility ? _threshold + 1 : _threshold - 1;
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
-    // TODO: Make sure to test the 0 voting power case
     vm.roll(block.number + 1);
     vm.prank(scoreOracle);
     ObolBinaryVotingWeightEarningPowerCalculator(address(calculator)).updateDelegateeScore(
@@ -350,8 +349,6 @@ contract DelegateCompensationStakerIntegrationTest is
     _setDelegateeEligibility(_delegate1, true);
     _setDelegateeEligibility(_delegate2, true);
 
-    // Delegates already initialized via updateDelegateeScore in
-    // _delegateEligibleDelegateVotingPower
     Staker.DepositIdentifier _depositId1 = staker.delegateDepositId(_delegate1);
     Staker.DepositIdentifier _depositId2 = staker.delegateDepositId(_delegate2);
 
@@ -579,7 +576,6 @@ contract DelegateCompensationStakerIntegrationTest is
     vm.prank(_delegate);
     staker.claimReward(_depositId);
 
-    // assertEq(_initialBalance, 0);
     assertEq(staker.REWARD_TOKEN().balanceOf(_delegate), _initialBalance + _unclaimedReward);
     assertEq(staker.unclaimedReward(_depositId), 0);
   }

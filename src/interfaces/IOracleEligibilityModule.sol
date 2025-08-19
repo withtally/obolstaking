@@ -30,13 +30,6 @@ interface IOracleEligibilityModule {
   function updateDelegateeScore(address _delegatee, uint256 _newScore) external;
 
   /// @notice Updates the eligibility scores of multiple delegatees in a single transaction.
-  /// @dev This function can only be called by the authorized `scoreOracle` address.
-  /// @dev If the oracle is paused, the update will be reverted.
-  /// @dev If any of the delegatees' scores is locked, the update will be reverted.
-  /// @dev Updates are processed sequentially. If the same delegatee appears multiple times in the
-  /// array, the last update will be applied.
-  /// @dev An empty array can be passed in by the oracle in order to update the
-  /// `lastOracleUpdateTime` keeping the oracle fresh without updating any scores.
   /// @param _delegateeScoreUpdates An array of DelegateeScoreUpdate structs containing delegatee
   /// addresses and their new scores.
   function updateDelegateeScores(DelegateeScoreUpdate[] calldata _delegateeScoreUpdates) external;
