@@ -58,9 +58,14 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     vm.broadcast(deployer);
     _rewardToken.transfer(address(_transferNotifier), REWARD_AMOUNT);
     console2.log("Transferred to Reward Notifier", REWARD_AMOUNT);
+
+    vm.broadcast(deployer);
+    _delegateComp.setRewardNotifier(address(_transferNotifier), true);
+
     vm.broadcast(deployer);
     _transferNotifier.notify();
     console2.log("Notified first reward");
+
     return _transferNotifier;
   }
 
@@ -79,7 +84,6 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
       deployer
     );
 
-    vm.broadcast(deployer);
     IEarningPowerCalculator _oracleEligibilityModule =
       _deployEarningPowerCalculator(address(_delegateComp));
 
@@ -96,11 +100,7 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     vm.broadcast(deployer);
     _delegateComp.setEarningPowerCalculator(address(_epc));
 
-    RewardTokenNotifierBase _transferNotifier =
-      _deployRewardNotifier(_delegateComp, _delegateCompParams.rewardToken);
-
-    vm.broadcast(deployer);
-    _delegateComp.setRewardNotifier(address(_transferNotifier), true);
+    _deployRewardNotifier(_delegateComp, _delegateCompParams.rewardToken);
 
     vm.broadcast(deployer);
     _delegateComp.setAdmin(_delegateCompParams.admin);

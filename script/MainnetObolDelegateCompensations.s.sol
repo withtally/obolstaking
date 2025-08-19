@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BaseObolDelegateCompensationDeploy as Base} from
   "script/BaseObolDelegateCompensationDeploy.sol";
 import {BinaryEligibilityOracleEarningPowerCalculator} from
-  "staker/notifiers/BinaryEligibilityOracleEarningPowerCalculator.sol";
+  "staker/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 
 contract MainnetObolDelegateCompensationDeploy is Base {
@@ -14,9 +15,10 @@ contract MainnetObolDelegateCompensationDeploy is Base {
     REWARD_AMOUNT = 165_000e18 / 6; // Aribitrary amount
   }
 
-  function _deployEarningPowerCalculator(address _delegateComp)
+  function _deployEarningPowerCalculator(address)
     internal
     virtual
+    override
     returns (IEarningPowerCalculator)
   {
     address _owner = 0x42D201CC4d9C1e31c032397F54caCE2f48C1FA72; // TODO: Check ownwer of staker
