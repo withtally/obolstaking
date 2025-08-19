@@ -42,12 +42,15 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
     vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 22_773_964);
 
     staker = new DelegateCompensationStakerHarness(
-      IERC20(OBOL_TOKEN_ADDRESS), IEarningPowerCalculator(address(this)), MAX_BUMP_TIP, admin
+      IERC20(OBOL_TOKEN_ADDRESS),
+      IEarningPowerCalculator(address(this)), // EPC will initially be deployer
+      MAX_BUMP_TIP,
+      admin
     );
 
     oracleEligibilityModule = new BinaryEligibilityOracleEarningPowerCalculator(
       owner,
-      address(0),
+      address(0), // Score oracle will be calculator
       STALE_ORACLE_WINDOW,
       oraclePauseGuardian,
       DELEGATE_ELIGIBILITY_THRESHOLD,
