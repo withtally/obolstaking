@@ -162,6 +162,7 @@ contract UpdateDelegateeScores is OracleDelegateCompensationInitializerTest {
     address[1] memory _delegatees,
     uint256[1] memory _scores
   ) public {
+    _assumeValidDelegate(_delegatees[0]);
     IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
       new IOracleEligibilityModule.DelegateeScoreUpdate[](3);
 
@@ -186,6 +187,7 @@ contract UpdateDelegateeScores is OracleDelegateCompensationInitializerTest {
     address[1] memory _delegatees,
     uint256[2] memory _scores
   ) public {
+    _assumeValidDelegate(_delegatees[0]);
     IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
       new IOracleEligibilityModule.DelegateeScoreUpdate[](3);
 
@@ -375,7 +377,6 @@ contract UpdateDelegateeScores is OracleDelegateCompensationInitializerTest {
     IOracleEligibilityModule.DelegateeScoreUpdate[] memory _updates
   ) public {
     vm.assume(_caller != scoreOracle);
-    vm.assume(_updates.length > 0 && _updates.length < 10);
 
     vm.prank(_caller);
     vm.expectRevert(
