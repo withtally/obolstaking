@@ -364,7 +364,7 @@ contract UpdateDelegateeScores is OracleDelegateCompensationInitializerTest {
     );
   }
 
-  function test_DoesNotRevertWhenGivenEmptyArray() public {
+  function test_GivenEmptyArray() public {
     IOracleEligibilityModule.DelegateeScoreUpdate[] memory updates =
       new IOracleEligibilityModule.DelegateeScoreUpdate[](0);
 
