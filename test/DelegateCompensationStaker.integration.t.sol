@@ -16,6 +16,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DelegateCompensationStakerTest} from "test/helpers/DelegateCompensationStakerTest.sol";
 import {PercentAssertions} from "staker-test/helpers/PercentAssertions.sol";
 import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
+import {ObolBinaryVotingWeightEarningPowerCalculator} from
+  "src/ObolBinaryVotingWeightEarningPowerCalculator.sol";
+import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 
 contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertions {
   address constant OBOL_TOKEN_ADDRESS = 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7;
@@ -33,30 +36,41 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
 
   DelegateCompensationStakerHarness public staker;
   BinaryVotingWeightEarningPowerCalculator public calculator;
-  IOracleEligibilityModule public oracleEligibilityModule;
+  BinaryEligibilityOracleEarningPowerCalculator public oracleEligibilityModule;
 
   function setUp() public {
     vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 22_773_964);
 
-    oracleEligibilityModule = IOracleEligibilityModule(
-      address(
-        new BinaryEligibilityOracleEarningPowerCalculator(
-          owner,
-          scoreOracle,
-          STALE_ORACLE_WINDOW,
-          oraclePauseGuardian,
-          DELEGATE_ELIGIBILITY_THRESHOLD,
-          UPDATE_ELIGIBILITY_DELAY
-        )
-      )
+    staker = new DelegateCompensationStakerHarness(
+      IERC20(OBOL_TOKEN_ADDRESS),
+      IEarningPowerCalculator(address(this)), // EPC will initially be deployer
+      MAX_BUMP_TIP,
+      admin
     );
 
-    calculator = new BinaryVotingWeightEarningPowerCalculator(
-      owner, address(oracleEligibilityModule), OBOL_TOKEN_ADDRESS, VOTING_POWER_UPDATE_INTERVAL
+    oracleEligibilityModule = new BinaryEligibilityOracleEarningPowerCalculator(
+      owner,
+      address(0), // Score oracle will be calculator
+      STALE_ORACLE_WINDOW,
+      oraclePauseGuardian,
+      DELEGATE_ELIGIBILITY_THRESHOLD,
+      UPDATE_ELIGIBILITY_DELAY
     );
-    staker = new DelegateCompensationStakerHarness(
-      IERC20(OBOL_TOKEN_ADDRESS), calculator, MAX_BUMP_TIP, admin
+
+    calculator = new ObolBinaryVotingWeightEarningPowerCalculator(
+      owner,
+      address(oracleEligibilityModule),
+      OBOL_TOKEN_ADDRESS,
+      VOTING_POWER_UPDATE_INTERVAL,
+      address(staker),
+      scoreOracle
     );
+
+    vm.prank(owner);
+    oracleEligibilityModule.setScoreOracle(address(calculator));
+
+    vm.prank(admin);
+    staker.setEarningPowerCalculator(address(calculator));
   }
 
   function _assumeValidDelegate(address _delegate) internal view {
@@ -86,9 +100,13 @@ contract DelegateCompensationStakerIntegrationTestBase is Test, PercentAssertion
       address(oracleEligibilityModule)
     ).delegateeEligibilityThresholdScore();
     uint256 _newScore = _eligibility ? _threshold + 1 : _threshold - 1;
+
+    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
+    vm.roll(block.number + 1);
     vm.prank(scoreOracle);
-    BinaryEligibilityOracleEarningPowerCalculator(address(oracleEligibilityModule))
-      .updateDelegateeScore(_delegatee, _newScore);
+    ObolBinaryVotingWeightEarningPowerCalculator(address(calculator)).updateDelegateeScore(
+      _delegatee, _newScore
+    );
   }
 
   function _delegateEligibleDelegateVotingPower(address _delegatee, uint256 _votingPower) internal {
@@ -195,10 +213,17 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 100);
     _votingPower = _boundToValidVotingPower(_votingPower);
 
-    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
+    _addDelegateVotingPower(_delegate, _delegate, _votingPower);
+    uint256 _threshold = BinaryEligibilityOracleEarningPowerCalculator(
+      address(oracleEligibilityModule)
+    ).delegateeEligibilityThresholdScore();
 
     vm.expectRevert(bytes("ERC20Votes: block not yet mined"));
-    staker.initializeDelegateCompensation(_delegate);
+    vm.prank(scoreOracle);
+    // Initialization happens when a delegate becomes eligible
+    ObolBinaryVotingWeightEarningPowerCalculator(address(calculator)).updateDelegateeScore(
+      _delegate, _threshold
+    );
   }
 
   function testForkFuzz_InitializeDelegateCompensationAtStartOfSecondEpoch(
@@ -210,10 +235,12 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 100);
     _votingPower = _boundToValidVotingPower(_votingPower);
 
-    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
+    _delegateIneligibleDelegateVotingPower(_delegate, _votingPower);
 
     vm.roll(block.number + calculator.votingPowerUpdateInterval());
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    _setDelegateeEligibility(_delegate, true);
+    staker.bumpEarningPower(_depositId, address(_delegate), 0);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -241,7 +268,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -267,7 +295,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -316,13 +345,15 @@ contract DelegateCompensationStakerIntegrationTest is
 
     _votingPower1 = _boundToValidVotingPower(_votingPower1);
     _votingPower2 = _boundToValidVotingPower(_votingPower2);
-    _delegateEligibleDelegateVotingPower(_delegate1, _votingPower1);
-    _delegateEligibleDelegateVotingPower(_delegate2, _votingPower2);
+    _addDelegateVotingPower(_delegate1, _delegate1, _votingPower1);
+    _addDelegateVotingPower(_delegate2, _delegate2, _votingPower2);
 
-    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
-    vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
-    Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+    // Split elgibility from voting power as elgiibility will move 1 block forward
+    _setDelegateeEligibility(_delegate1, true);
+    _setDelegateeEligibility(_delegate2, true);
+
+    Staker.DepositIdentifier _depositId1 = staker.delegateDepositId(_delegate1);
+    Staker.DepositIdentifier _depositId2 = staker.delegateDepositId(_delegate2);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -359,8 +390,10 @@ contract DelegateCompensationStakerIntegrationTest is
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
-    Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+    // Delegates already initialized via updateDelegateeScore in
+    // _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId1 = staker.delegateDepositId(_delegate1);
+    Staker.DepositIdentifier _depositId2 = staker.delegateDepositId(_delegate2);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -419,7 +452,7 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 50);
     _votingPower = _boundToValidVotingPower(_votingPower);
 
-    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
+    _addDelegateVotingPower(_delegate, _delegate, _votingPower);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -427,6 +460,8 @@ contract DelegateCompensationStakerIntegrationTest is
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    _setDelegateeEligibility(_delegate, true);
+    staker.bumpEarningPower(_depositId, _delegate, 0);
 
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
@@ -449,7 +484,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
 
@@ -485,7 +521,8 @@ contract DelegateCompensationStakerIntegrationTest is
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
     // Pause Oracle
@@ -527,11 +564,11 @@ contract DelegateCompensationStakerIntegrationTest is
     _percentDuration = bound(_percentDuration, 1, 100);
     _votingPower = _boundToValidVotingPower(_votingPower);
 
-    _delegateVotingPower(_delegate, _votingPower, _eligibility);
+    _addDelegateVotingPower(_delegate, _delegate, _votingPower);
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
-    vm.roll(block.number + 1);
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    _setDelegateeEligibility(_delegate, _eligibility);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -542,7 +579,6 @@ contract DelegateCompensationStakerIntegrationTest is
     vm.prank(_delegate);
     staker.claimReward(_depositId);
 
-    assertEq(_initialBalance, 0);
     assertEq(staker.REWARD_TOKEN().balanceOf(_delegate), _initialBalance + _unclaimedReward);
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
@@ -563,13 +599,15 @@ contract DelegateCompensationStakerIntegrationTest is
 
     _votingPower1 = _boundToValidVotingPower(_votingPower1);
     _votingPower2 = _boundToValidVotingPower(_votingPower2);
-    _delegateVotingPower(_delegate1, _votingPower1, _eligibility1);
-    _delegateVotingPower(_delegate2, _votingPower2, _eligibility2);
+    _addDelegateVotingPower(_delegate1, _delegate1, _votingPower1);
+    _addDelegateVotingPower(_delegate2, _delegate2, _votingPower2);
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
-    vm.roll(block.number + 1);
     Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
     Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+
+    _setDelegateeEligibility(_delegate1, _eligibility1);
+    _setDelegateeEligibility(_delegate2, _eligibility2);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -585,8 +623,6 @@ contract DelegateCompensationStakerIntegrationTest is
     vm.prank(_delegate2);
     staker.claimReward(_depositId2);
 
-    assertEq(_initialBalance1, 0);
-    assertEq(_initialBalance2, 0);
     assertEq(staker.REWARD_TOKEN().balanceOf(_delegate1), _initialBalance1 + _unclaimedReward1);
     assertEq(staker.REWARD_TOKEN().balanceOf(_delegate2), _initialBalance2 + _unclaimedReward2);
     assertEq(staker.unclaimedReward(_depositId1), 0);
@@ -681,9 +717,7 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
 
     _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
 
-    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
-    vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -705,14 +739,20 @@ contract UnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
     vm.assume(_delegate1 != _delegate2);
     _votingPower1 = _boundToValidVotingPower(_votingPower1);
     _votingPower2 = _boundToValidVotingPower(_votingPower2);
-    _delegateEligibleDelegateVotingPower(_delegate1, _votingPower1);
-    _delegateEligibleDelegateVotingPower(_delegate2, _votingPower2);
+    _addDelegateVotingPower(_delegate1, _delegate1, _votingPower1);
+    _addDelegateVotingPower(_delegate2, _delegate2, _votingPower2);
     _percentDuration = bound(_percentDuration, 1, 100);
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
+    // Note: These manual initializations are still needed because the automatic initialization
+    // happens at different block numbers for each delegate during _setDelegateeEligibility
     Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
     Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+    _setDelegateeEligibility(_delegate1, true);
+    _setDelegateeEligibility(_delegate2, true);
+    staker.bumpEarningPower(_depositId1, _delegate1, 0);
+    staker.bumpEarningPower(_depositId2, _delegate2, 0);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -744,7 +784,8 @@ contract AlterClaimer is DelegateCompensationStakerIntegrationTestBase {
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     (,,, address _initialDelegatee, address _initialClaimer,,) = staker.deposits(_depositId);
     assertEq(_initialClaimer, _delegate);
@@ -775,7 +816,8 @@ contract ClaimReward is DelegateCompensationStakerIntegrationTestBase {
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
     _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -824,7 +866,8 @@ contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegatee);
+    // Delegate already initialized via updateDelegateeScore in _setDelegateeEligibility
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegatee);
 
     // Reset delegate voting power
     _removeDelegateVotingPower(_delegator1);
@@ -877,7 +920,8 @@ contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegatee);
+    // Delegate already initialized via updateDelegateeScore in _setDelegateeEligibility
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegatee);
 
     // Reset delegate voting power
     _removeDelegateVotingPower(_delegator1);

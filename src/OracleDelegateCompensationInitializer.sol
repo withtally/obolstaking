@@ -47,13 +47,22 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
   /// @param _newScore The new score value to set for the delegate.
   function updateDelegateeScore(address _delegatee, uint256 _newScore) public virtual {
     _revertIfNotScoreOracle();
-    DelegateCompensationStaker _delegateCompensationStaker =
-      DelegateCompensationStaker(DELEGATE_COMPENSATION_STAKER);
-    getOracleEligibilityModule().updateDelegateeScore(_delegatee, _newScore);
-    if (
-      Staker.DepositIdentifier.unwrap(_delegateCompensationStaker.delegateDepositId(_delegatee))
-        == 0 && getOracleEligibilityModule().isDelegateeEligible(_delegatee)
-    ) _delegateCompensationStaker.initializeDelegateCompensation(_delegatee);
+    _updateDelegateeScore(_delegatee, _newScore);
+  }
+
+  /// @notice Bulk updates delegatee scores and initializes their compensation if eligible.
+  /// @dev Only callable by the score oracle. Automatically initializes delegate compensation
+  /// if the delegate becomes eligible and hasn't been initialized yet.
+  /// @param _delegateeScoreUpdates An array of DelegateeScoreUpdate structs containing delegatee
+  /// addresses and their new scores.
+  function updateDelegateeScores(
+    IOracleEligibilityModule.DelegateeScoreUpdate[] calldata _delegateeScoreUpdates
+  ) public virtual {
+    _revertIfNotScoreOracle();
+    for (uint256 _i = 0; _i < _delegateeScoreUpdates.length; _i++) {
+      IOracleEligibilityModule.DelegateeScoreUpdate calldata _update = _delegateeScoreUpdates[_i];
+      _updateDelegateeScore(_update.delegatee, _update.newScore);
+    }
   }
 
   /// @notice Sets a new address as the score oracle.
@@ -78,5 +87,18 @@ abstract contract OracleDelegateCompensationInitializer is Ownable {
   function _setScoreOracle(address _newScoreOracle) internal {
     emit ScoreOracleSet(scoreOracle, _newScoreOracle);
     scoreOracle = _newScoreOracle;
+  }
+
+  /// @notice Internal function to update delegatee scores.
+  /// @param _delegatee The address of the delegate whose score is being updated.
+  /// @param _newScore The new score value to set for the delegate.
+  function _updateDelegateeScore(address _delegatee, uint256 _newScore) internal virtual {
+    DelegateCompensationStaker _delegateCompensationStaker =
+      DelegateCompensationStaker(DELEGATE_COMPENSATION_STAKER);
+    getOracleEligibilityModule().updateDelegateeScore(_delegatee, _newScore);
+    if (
+      Staker.DepositIdentifier.unwrap(_delegateCompensationStaker.delegateDepositId(_delegatee))
+        == 0 && getOracleEligibilityModule().isDelegateeEligible(_delegatee)
+    ) _delegateCompensationStaker.initializeDelegateCompensation(_delegatee);
   }
 }
