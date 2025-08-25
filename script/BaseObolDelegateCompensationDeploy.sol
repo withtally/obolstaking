@@ -9,6 +9,8 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
 import {TransferRewardNotifier} from "staker/notifiers/TransferRewardNotifier.sol";
 import {RewardTokenNotifierBase} from "staker/notifiers/RewardTokenNotifierBase.sol";
+import {BinaryEligibilityOracleEarningPowerCalculator} from
+  "staker/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 
 abstract contract BaseObolDelegateCompensationDeploy is Script {
   address public deployer;
@@ -44,30 +46,13 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
   function _deployEarningPowerCalculator(address _delegateComp)
     internal
     virtual
-    returns (IEarningPowerCalculator);
+    returns (BinaryEligibilityOracleEarningPowerCalculator);
+
 
   function _deployRewardNotifier(DelegateCompensationStaker _delegateComp, IERC20 _rewardToken)
     internal
     virtual
-    returns (RewardTokenNotifierBase)
-  {
-    vm.broadcast(deployer);
-    TransferRewardNotifier _transferNotifier =
-      new TransferRewardNotifier(_delegateComp, REWARD_AMOUNT, REWARD_INTERVAL, deployer);
-
-    vm.broadcast(deployer);
-    _rewardToken.transfer(address(_transferNotifier), REWARD_AMOUNT);
-    console2.log("Transferred to Reward Notifier", REWARD_AMOUNT);
-
-    vm.broadcast(deployer);
-    _delegateComp.setRewardNotifier(address(_transferNotifier), true);
-
-    vm.broadcast(deployer);
-    _transferNotifier.notify();
-    console2.log("Notified first reward");
-
-    return _transferNotifier;
-  }
+    returns (RewardTokenNotifierBase);
 
   function run()
     public
@@ -84,7 +69,7 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
       deployer
     );
 
-    IEarningPowerCalculator _oracleEligibilityModule =
+    BinaryEligibilityOracleEarningPowerCalculator _oracleEligibilityModule =
       _deployEarningPowerCalculator(address(_delegateComp));
 
     vm.broadcast(deployer);
@@ -96,6 +81,12 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
       address(_delegateComp),
       _delegateCompParams.scoreOracle
     );
+
+	vm.broadcast(deployer);
+	_oracleEligibilityModule.setScoreOracle(address(_epc));
+
+	vm.broadcast(deployer);
+	_oracleEligibilityModule.transferOwnership(address(_delegateCompParams.owner));
 
     vm.broadcast(deployer);
     _delegateComp.setEarningPowerCalculator(address(_epc));

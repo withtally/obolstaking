@@ -7,6 +7,10 @@ import {BaseObolDelegateCompensationDeploy as Base} from
 import {BinaryEligibilityOracleEarningPowerCalculator} from
   "staker/calculators/BinaryEligibilityOracleEarningPowerCalculator.sol";
 import {IEarningPowerCalculator} from "staker/interfaces/IEarningPowerCalculator.sol";
+import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
+import {RewardTokenNotifierBase} from "staker/notifiers/RewardTokenNotifierBase.sol";
+import {TransferRewardNotifier} from "staker/notifiers/TransferRewardNotifier.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 contract MainnetObolDelegateCompensationDeploy is Base {
   function setUp() public virtual override {
@@ -19,16 +23,16 @@ contract MainnetObolDelegateCompensationDeploy is Base {
     internal
     virtual
     override
-    returns (IEarningPowerCalculator)
+    returns (BinaryEligibilityOracleEarningPowerCalculator)
   {
-    address _owner = 0x42D201CC4d9C1e31c032397F54caCE2f48C1FA72; // TODO: Check ownwer of staker
+	/// Deployer must update the score oracle and owner which is handled by the base script
     address _scoreOracle = address(0);
-    uint256 _staleOracleWindow = 0;
-    address _oraclePauseGuardian = address(0);
+    uint256 _staleOracleWindow = 3.5 weeks;
+    address _oraclePauseGuardian = 0xEDdffe7cF10f1D31cd7A7416172165EFD6430A93;
     uint256 _delegateeScoreEligibilityThreshold = 65;
     uint256 _updateEligibilityDelay = 0; // Not used
     return new BinaryEligibilityOracleEarningPowerCalculator(
-      _owner,
+      deployer,
       _scoreOracle,
       _staleOracleWindow,
       _oraclePauseGuardian,
@@ -37,20 +41,33 @@ contract MainnetObolDelegateCompensationDeploy is Base {
     );
   }
 
+  
+  function _deployRewardNotifier(DelegateCompensationStaker _delegateComp, IERC20) internal override returns (RewardTokenNotifierBase) {
+    vm.broadcast(deployer);
+    TransferRewardNotifier _transferNotifier =
+      new TransferRewardNotifier(_delegateComp, REWARD_AMOUNT, REWARD_INTERVAL, deployer);
+
+    vm.broadcast(deployer);
+    _delegateComp.setRewardNotifier(address(_transferNotifier), true);
+	return _transferNotifier;
+  }
+
   function _getObolDelegateCompensationConfig()
     internal
     virtual
     override
     returns (DelegateCompensationConfig memory)
   {
+    address _owner = 0xa59f60A7684A69E63c07bEC087cEC3D0607cd5cE;
+    address _scoreOracle = 0x033bF3608C9DbBfa05Ec1fD784E3763B9b9DCbe7;
     return DelegateCompensationConfig({
       owner: deployer,
       votingPowerToken: 0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7,
-      votingPowerUpdateInterval: 3 weeks, // 72 hours
-      scoreOracle: 0xC82Abf706378a88137040B03806489FD524B981c, // Curia test
+      votingPowerUpdateInterval: 3 weeks,
+      scoreOracle: _scoreOracle, // Curia test
       rewardToken: IERC20(0x0B010000b7624eb9B3DfBC279673C76E9D29D5F7),
-      maxBumpTip: 10e18, // arbitrary
-      admin: deployer
+      maxBumpTip: 10e18, // matches staker https://etherscan.io/address/0x30641013934ec7625c9e73a4d63aab4201004259#readContract
+      admin: _owner
     });
   }
 }
