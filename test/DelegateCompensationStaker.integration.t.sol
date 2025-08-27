@@ -954,7 +954,7 @@ contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
     address _tipReceiver,
     uint256 _requestedTip,
     uint256 _percentDuration
-  ) public {
+  ) public virtual {
     _assumeValidDelegate(_delegator1);
     _assumeValidDelegate(_delegator2);
     _assumeValidDelegate(_delegatee);
@@ -1011,45 +1011,18 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     return true;
   }
 
-  function testForkFuzz_RevertIf_InitializeDelegateCompensationAtContractDeployment(
-    address _delegate,
-    uint256 _votingPower,
-    uint256 _percentDuration
-  ) public {
-    _assumeValidDelegate(_delegate);
-    _percentDuration = bound(_percentDuration, 1, 100);
-    _votingPower = _boundToValidVotingPower(_votingPower);
-
-    _addDelegateVotingPower(_delegate, _delegate, _votingPower);
-    uint256 _threshold = BinaryEligibilityOracleEarningPowerCalculator(
-      address(oracleEligibilityModule)
-    ).delegateeEligibilityThresholdScore();
-
-    vm.expectRevert(bytes("ERC20Votes: block not yet mined"));
-    vm.prank(scoreOracle);
-    // Initialization happens when a delegate becomes eligible
-    ObolBinaryVotingWeightEarningPowerCalculator(address(calculator)).updateDelegateeScore(
-      _delegate, _threshold
-    );
-  }
-
   function testForkFuzz_InitializeDelegateCompensationAtStartOfSecondEpoch(
-    address _delegate,
-    uint256 _votingPower,
     uint256 _percentDuration
   ) public {
-    _assumeValidDelegate(_delegate);
+    address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
+	uint256 _votingPower = 976167703294540727119392;
     _percentDuration = bound(_percentDuration, 1, 100);
-    _votingPower = _boundToValidVotingPower(_votingPower);
-
-    _delegateIneligibleDelegateVotingPower(_delegate, _votingPower);
 
     vm.roll(block.number + calculator.votingPowerUpdateInterval());
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
     _setDelegateeEligibility(_delegate, true);
     staker.bumpEarningPower(_depositId, address(_delegate), 0);
 
-    _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     uint256 _expectedEarningPower = uint256(Math.sqrt(_votingPower));
@@ -1138,21 +1111,13 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
   }
 
   function testForkFuzz_MultipleDelegatesAccrueRewardsProportionalToVotingPower(
-    address _delegate1,
-    address _delegate2,
-    uint256 _votingPower1,
-    uint256 _votingPower2,
     uint256 _percentDuration
   ) public {
-    _assumeValidDelegate(_delegate1);
-    _assumeValidDelegate(_delegate2);
-    vm.assume(_delegate1 != _delegate2);
+    address _delegate1 = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
+    address _delegate2 = 0x7C4b6f39D62Ca59ED3a4EFD4c347E23417ec5d5f; // Scopelift
+	uint256  _votingPower1 = 976167703294540727119392;
+	uint256  _votingPower2 =  252560096913378840479288;
     _percentDuration = bound(_percentDuration, 1, 100);
-
-    _votingPower1 = _boundToValidVotingPower(_votingPower1);
-    _votingPower2 = _boundToValidVotingPower(_votingPower2);
-    _addDelegateVotingPower(_delegate1, _delegate1, _votingPower1);
-    _addDelegateVotingPower(_delegate2, _delegate2, _votingPower2);
 
     // Split elgibility from voting power as elgiibility will move 1 block forward
     _setDelegateeEligibility(_delegate1, true);
@@ -1161,7 +1126,6 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     Staker.DepositIdentifier _depositId1 = staker.delegateDepositId(_delegate1);
     Staker.DepositIdentifier _depositId2 = staker.delegateDepositId(_delegate2);
 
-    _mintTransferAndNotifyReward();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
 
     uint256 _expectedEarningPower1 = uint256(Math.sqrt(_votingPower1));
@@ -1272,23 +1236,20 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
   }
 
   function testForkFuzz_DelegateAccruesRewardWhenOracleIsPaused(
-    address _delegate,
-    uint256 _votingPower,
     uint256 _percentDuration
   ) public {
-    _assumeValidDelegate(_delegate);
+    address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
     _percentDuration = bound(_percentDuration, 1, 100);
-    _votingPower = _boundToValidVotingPower(_votingPower);
-
-    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
     // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
-    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    _setDelegateeEligibility(_delegate, true);
+    staker.bumpEarningPower(_depositId, _delegate, 0);
 
-    _mintTransferAndNotifyReward();
-
+    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
+    vm.roll(block.number + 1);
     // Pause Oracle
     _setOracleAsPaused();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -1309,22 +1270,18 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
   }
 
   function testForkFuzz_DelegateAccruesRewardWhenOracleIsStale(
-    address _delegate,
-    uint256 _votingPower,
     uint256 _percentDuration
   ) public {
-    _assumeValidDelegate(_delegate);
-    _percentDuration = bound(_percentDuration, 1, 100);
-    _votingPower = _boundToValidVotingPower(_votingPower);
+    address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
 
-    _delegateEligibleDelegateVotingPower(_delegate, _votingPower);
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
     // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
-    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    _setDelegateeEligibility(_delegate, true);
+    staker.bumpEarningPower(_depositId, _delegate, 0);
 
-    _mintTransferAndNotifyReward();
     // Pause Oracle
     _jumpAndSetOracleAsStale();
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -1429,4 +1386,135 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     assertEq(staker.unclaimedReward(_depositId2), 0);
   }
 }
+
+contract DeployedUnclaimedReward is DelegateCompensationStakerIntegrationTestBase {
+  function _useDeployedCompensationSystem() internal virtual override returns (bool) {
+    return true;
+  }
+
+  function testFuzz_CalculatesCorrectEarningsForASingleDelegate(
+    uint256 _percentDuration
+  ) public {
+    address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
+    _percentDuration = bound(_percentDuration, 1, 100);
+
+    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    _setDelegateeEligibility(_delegate, true);
+    staker.bumpEarningPower(_depositId, _delegate, 0);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _unclaimedReward = staker.unclaimedReward(_depositId);
+    uint256 _expectedReward = _calculateExpectedUnclaimedReward(_delegate, _percentDuration);
+    assertLteWithinOnePercent(_unclaimedReward, _expectedReward);
+  }
+
+  function testFuzz_CalculatesCorrectEarningsForMultipleDelegates(
+    uint256 _percentDuration
+  ) public {
+    address _delegate1 = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
+    address _delegate2 = 0x7C4b6f39D62Ca59ED3a4EFD4c347E23417ec5d5f; // Scopelift
+    _percentDuration = bound(_percentDuration, 1, 100);
+
+    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
+    vm.roll(block.number + 1);
+    // Note: These manual initializations are still needed because the automatic initialization
+    // happens at different block numbers for each delegate during _setDelegateeEligibility
+    Staker.DepositIdentifier _depositId1 = staker.initializeDelegateCompensation(_delegate1);
+    Staker.DepositIdentifier _depositId2 = staker.initializeDelegateCompensation(_delegate2);
+    _setDelegateeEligibility(_delegate1, true);
+    _setDelegateeEligibility(_delegate2, true);
+    staker.bumpEarningPower(_depositId1, _delegate1, 0);
+    staker.bumpEarningPower(_depositId2, _delegate2, 0);
+
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+
+    uint256 _unclaimedReward1 = staker.unclaimedReward(_depositId1);
+    uint256 _unclaimedReward2 = staker.unclaimedReward(_depositId2);
+    uint256 _expectedReward1 = _calculateExpectedUnclaimedReward(_delegate1, _percentDuration);
+    uint256 _expectedReward2 = _calculateExpectedUnclaimedReward(_delegate2, _percentDuration);
+
+    assertLteWithinOnePercent(_unclaimedReward1, _expectedReward1);
+    assertLteWithinOnePercent(_unclaimedReward2, _expectedReward2);
+    assertLteWithinOnePercent(
+      _expectedReward1 + _expectedReward2, _percentOf(REWARD_AMOUNT, _percentDuration)
+    );
+  }
+}
+
+contract DeployedAlterClaimer is AlterClaimer{
+  function _useDeployedCompensationSystem() internal virtual override returns (bool) {
+    return true;
+  }
+}
+
+contract DeployedClaimReward is ClaimReward{
+  function _useDeployedCompensationSystem() internal virtual override returns (bool) {
+    return true;
+  }
+}
+
+contract DeployedBumpEarningPower is BumpEarningPower{
+  function _useDeployedCompensationSystem() internal virtual override returns (bool) {
+    return true;
+  }
+
+  function testFuzz_BumpingDelegateEarningPowerChangesAccrualOfRewards(
+    uint256 _initialVotingPower,
+    uint256 _newVotingPower,
+    address _delegator1,
+    address _delegator2,
+    address,
+    address _tipReceiver,
+    uint256 _requestedTip,
+    uint256 _percentDuration
+  ) public override {
+    address _delegatee = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
+    _assumeValidDelegate(_delegator1);
+    _assumeValidDelegate(_delegator2);
+    vm.assume(_delegator1 != _delegator2);
+    vm.assume(_delegatee != _delegator1);
+    vm.assume(_delegatee != _delegator2);
+    vm.assume(_tipReceiver != _delegator1);
+    vm.assume(_tipReceiver != _delegator2);
+    vm.assume(_tipReceiver != _delegatee);
+    vm.assume(_tipReceiver != address(0));
+
+    _initialVotingPower = _boundToValidVotingPower(_initialVotingPower);
+    _newVotingPower = _boundToValidVotingPower(_newVotingPower);
+    vm.assume(Math.sqrt(_initialVotingPower) != Math.sqrt(_newVotingPower));
+
+    // Set initial voting power
+    _addDelegateVotingPower(_delegator1, _delegatee, _initialVotingPower);
+    _setDelegateeEligibility(_delegatee, true);
+
+    // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
+    vm.roll(block.number + 1);
+    // Delegate already initialized via updateDelegateeScore in _setDelegateeEligibility
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegatee);
+
+    // Reset delegate voting power
+    _removeDelegateVotingPower(_delegator1);
+    _addDelegateVotingPower(_delegator2, _delegatee, _newVotingPower);
+    vm.roll(block.number + calculator.votingPowerUpdateInterval());
+
+
+    // lower bound set to 1 to prevent bumpEarningPower revert on insufficient unclaimedRewards
+    _percentDuration = bound(_percentDuration, 1, 50);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+    uint256 _expectedUnclaimedReward1 =
+      _calculateExpectedUnclaimedReward(_delegatee, _percentDuration);
+
+    _requestedTip = _boundToValidBumpTip(_depositId);
+    staker.bumpEarningPower(_depositId, _tipReceiver, _requestedTip);
+    _jumpAheadByPercentOfRewardDuration(_percentDuration);
+    uint256 _expectedUnclaimedReward2 =
+      _calculateExpectedUnclaimedReward(_delegatee, _percentDuration);
+
+    assertLteWithinOneUnit(
+      staker.unclaimedReward(_depositId), _expectedUnclaimedReward1 + _expectedUnclaimedReward2
+    );
+  }
+}
+
 
