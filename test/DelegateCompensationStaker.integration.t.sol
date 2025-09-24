@@ -40,7 +40,7 @@ abstract contract DelegateCompensationStakerIntegrationTestBase is Test, Percent
   BinaryEligibilityOracleEarningPowerCalculator public oracleEligibilityModule;
 
   function setUp() public {
-    vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 23227513);
+    vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 23229600);
 
     if (_useDeployedCompensationSystem()) {
       VOTING_POWER_UPDATE_INTERVAL = 3 weeks;
@@ -56,14 +56,14 @@ abstract contract DelegateCompensationStakerIntegrationTestBase is Test, Percent
       scoreOracle = 0x033bF3608C9DbBfa05Ec1fD784E3763B9b9DCbe7;
       oraclePauseGuardian = 0xEDdffe7cF10f1D31cd7A7416172165EFD6430A93;
 
-      staker = DelegateCompensationStaker(0xD0b7ef1ef4ad120099eF63C60aBd1839dd34a8c4);
+      staker = DelegateCompensationStaker(0x1f43De0113f059C200172e4274090c54C76Cbd28);
       calculator =
-        BinaryVotingWeightEarningPowerCalculator(0xA9a0E316655Aa3F467B0c624D41C491E753572E7);
+        BinaryVotingWeightEarningPowerCalculator(0x9667BEDaa897Ad625F532Bf4c56bd6CEC9e5dD17);
       oracleEligibilityModule =
-        BinaryEligibilityOracleEarningPowerCalculator(0xE113d155a3CBfa8A80B9082c4Bd108498f6cFeF5);
+        BinaryEligibilityOracleEarningPowerCalculator(0x7BD374Fb2b543310f4cF8C8328fB009B4b246901);
 
       TransferRewardNotifier _transferNotifier =
-        TransferRewardNotifier(0x5E77842ea1cd2fCDC4ed96C1C9569060Abe5E16D);
+        TransferRewardNotifier(0x2bFB7fca009F8bb77475B393Fe74fEe89780Cfa1);
 
       vm.prank(obolHolder);
       IERC20(OBOL_TOKEN_ADDRESS).transfer(address(_transferNotifier), REWARD_AMOUNT);

@@ -12,7 +12,6 @@ import {DelegateCompensationStaker} from "src/DelegateCompensationStaker.sol";
 import {RewardTokenNotifierBase} from "staker/notifiers/RewardTokenNotifierBase.sol";
 import {TransferRewardNotifier} from "staker/notifiers/TransferRewardNotifier.sol";
 
-
 contract SepoliaObolDelegateCompensationDeploy is Base {
   function setUp() public virtual override {
     super.setUp();
@@ -32,7 +31,7 @@ contract SepoliaObolDelegateCompensationDeploy is Base {
   function _deployRewardNotifier(DelegateCompensationStaker _delegateComp, IERC20 _rewardToken)
     internal
     virtual
-	override
+    override
     returns (RewardTokenNotifierBase)
   {
     vm.broadcast(deployer);
@@ -52,8 +51,6 @@ contract SepoliaObolDelegateCompensationDeploy is Base {
 
     return _transferNotifier;
   }
-
-
 
   function _getObolDelegateCompensationConfig()
     internal

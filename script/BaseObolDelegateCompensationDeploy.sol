@@ -48,7 +48,6 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     virtual
     returns (BinaryEligibilityOracleEarningPowerCalculator);
 
-
   function _deployRewardNotifier(DelegateCompensationStaker _delegateComp, IERC20 _rewardToken)
     internal
     virtual
@@ -64,7 +63,7 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
     vm.broadcast(deployer);
     DelegateCompensationStaker _delegateComp = new DelegateCompensationStaker(
       _delegateCompParams.rewardToken,
-      IEarningPowerCalculator(makeAddr("Fake epc")),
+      IEarningPowerCalculator(deployer),
       _delegateCompParams.maxBumpTip,
       deployer
     );
@@ -82,11 +81,11 @@ abstract contract BaseObolDelegateCompensationDeploy is Script {
       _delegateCompParams.scoreOracle
     );
 
-	vm.broadcast(deployer);
-	_oracleEligibilityModule.setScoreOracle(address(_epc));
+    vm.broadcast(deployer);
+    _oracleEligibilityModule.setScoreOracle(address(_epc));
 
-	vm.broadcast(deployer);
-	_oracleEligibilityModule.transferOwnership(address(_delegateCompParams.owner));
+    vm.broadcast(deployer);
+    _oracleEligibilityModule.transferOwnership(address(_delegateCompParams.owner));
 
     vm.broadcast(deployer);
     _delegateComp.setEarningPowerCalculator(address(_epc));
