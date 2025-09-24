@@ -1,9 +1,9 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/stGOV"]
-	path = lib/stGOV
-	url = https://github.com/withtally/stGOV
 [submodule "lib/staker"]
 	path = lib/staker
 	url = https://github.com/withtally/staker
+[submodule "lib/stGOV"]
+	path = lib/stGOV
+	url = https://github.com/withtally/stGOV
