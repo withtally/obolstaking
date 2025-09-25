@@ -40,7 +40,7 @@ abstract contract DelegateCompensationStakerIntegrationTestBase is Test, Percent
   BinaryEligibilityOracleEarningPowerCalculator public oracleEligibilityModule;
 
   function setUp() public {
-    vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 23229600);
+    vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 23_229_600);
 
     if (_useDeployedCompensationSystem()) {
       VOTING_POWER_UPDATE_INTERVAL = 3 weeks;
@@ -227,7 +227,7 @@ abstract contract DelegateCompensationStakerIntegrationTestBase is Test, Percent
   {
     uint256 _delegateEarningPower = staker.depositorTotalEarningPower(_delegate);
     uint256 _totalEarningPower = staker.totalEarningPower();
-	console2.logUint(REWARD_AMOUNT);
+    console2.logUint(REWARD_AMOUNT);
 
     return (REWARD_AMOUNT * _delegateEarningPower * _percentDuration) / (_totalEarningPower * 100);
   }
@@ -278,7 +278,10 @@ contract DelegateCompensationStakerIntegrationTest is
     _delegateIneligibleDelegateVotingPower(_delegate, _votingPower);
 
     vm.roll(block.number + calculator.votingPowerUpdateInterval());
-    Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
+    Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
+    if (Staker.DepositIdentifier.unwrap(_depositId) == 0) {
+      _depositId = staker.initializeDelegateCompensation(_delegate);
+    }
     _setDelegateeEligibility(_delegate, true);
     staker.bumpEarningPower(_depositId, address(_delegate), 0);
 
@@ -1007,15 +1010,180 @@ contract BumpEarningPower is DelegateCompensationStakerIntegrationTestBase {
 contract DeployedDelegateCompensationStakerIntegrationTest is
   DelegateCompensationStakerIntegrationTestBase
 {
+  struct UpdateIntervalContext {
+    uint48 previousInterval;
+    uint48 targetInterval;
+    uint256 unclaimedBefore;
+    uint256 oldEarningPower;
+    uint256 oldTotalEarningPower;
+    uint48 snapshotBefore;
+  }
+
+  struct IntervalCsvRow {
+    address delegate;
+    uint256 oldEarningPower;
+    uint256 newEarningPower;
+    uint256 oldScaledRewardRate;
+    uint256 newScaledRewardRate;
+    uint256 oldRewardRatePerSecond;
+    uint256 newRewardRatePerSecond;
+  }
+
   function _useDeployedCompensationSystem() internal virtual override returns (bool) {
     return true;
   }
 
-  function testForkFuzz_InitializeDelegateCompensationAtStartOfSecondEpoch(
-    uint256 _percentDuration
-  ) public {
+  // Updates deployed voting power interval, checks reward invariants, bumps earning power, and
+  // stores deltas for manual review.
+  function test_updateIntercval() public {
+    vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 23_441_402);
+
+    IntervalCsvRow[] memory _rows = _collectDepositRows();
+    _writeIntervalCsv(_rows);
+  }
+
+  function _snapshotBlockForInterval(uint48 _interval) internal view returns (uint48) {
+    require(_interval != 0, "interval zero");
+    uint256 _start = calculator.SNAPSHOT_START_BLOCK();
+    uint256 _safeBlock = block.number > _start ? block.number - 1 : _start;
+    uint256 _intervalsPassed = (_safeBlock - _start) / _interval;
+    return uint48(_start + _intervalsPassed * _interval);
+  }
+
+  function _rollToNextSnapshotBoundary(uint48 _interval) internal {
+    uint256 _start = calculator.SNAPSHOT_START_BLOCK();
+    uint256 _safeBlock = block.number > _start ? block.number - 1 : _start;
+    uint256 _intervalsPassed = (_safeBlock - _start) / _interval;
+    vm.roll(_start + (_intervalsPassed + 1) * _interval + 1);
+  }
+
+  function _writeIntervalCsv(IntervalCsvRow[] memory _rows) internal {
+    if (!vm.envOr("ALLOW_INTERVAL_CSV_WRITE", false)) {
+      console2.log(
+        "CSV output skipped; set ALLOW_INTERVAL_CSV_WRITE=true to persist update_interval_diff.csv"
+      );
+      return;
+    }
+    string memory _path = "test-artifacts/update_interval_diff.csv";
+    string memory _header =
+      "delegate,oldEarningPower,newEarningPower,oldScaledRewardRate,newScaledRewardRate,oldRewardRatePerSecond,newRewardRatePerSecond,rewardRateDelta\n";
+    string memory _content = _header;
+    for (uint256 _i = 0; _i < _rows.length; _i++) {
+      IntervalCsvRow memory _row = _rows[_i];
+      uint256 _rewardDelta;
+      if (_row.newRewardRatePerSecond > _row.oldRewardRatePerSecond) {
+        _rewardDelta = _row.newRewardRatePerSecond - _row.oldRewardRatePerSecond;
+      } else {
+        _rewardDelta = _row.oldRewardRatePerSecond - _row.newRewardRatePerSecond;
+      }
+      _content = string.concat(
+        _content,
+        vm.toString(_row.delegate),
+        ",",
+        vm.toString(_row.oldEarningPower),
+        ",",
+        vm.toString(_row.newEarningPower),
+        ",",
+        vm.toString(_row.oldScaledRewardRate),
+        ",",
+        vm.toString(_row.newScaledRewardRate),
+        ",",
+        vm.toString(_row.oldRewardRatePerSecond),
+        ",",
+        vm.toString(_row.newRewardRatePerSecond),
+        ",",
+        vm.toString(_rewardDelta),
+        "\n"
+      );
+    }
+    vm.writeFile(_path, _content);
+  }
+
+  function _collectDepositRows() internal returns (IntervalCsvRow[] memory _rows) {
+    // 1. Capture existing earning power and reward rates for tracked deposits.
+    // 2. Update the voting power interval to 151200 blocks (≈3 weeks at 12s).
+    // 3. Bump every qualifying deposit and compute new earning power plus reward rate metrics.
+
+    // uint48 _oldInterval = calculator.votingPowerUpdateInterval();
+    // uint256 _scaleFactor = staker.SCALE_FACTOR();
+    // uint256 _oldScaledRewardRate = staker.scaledRewardRate();
+
+    IntervalCsvRow[] memory _buffer = new IntervalCsvRow[](58);
+    Staker.DepositIdentifier[] memory _depositIds = new Staker.DepositIdentifier[](58);
+    address[] memory _delegates = new address[](58);
+    uint256 _count;
+
+    for (uint256 _i = 0; _i < 58; _i++) {
+      Staker.DepositIdentifier _depositId = Staker.DepositIdentifier.wrap(_i + 1);
+      (,,uint256 _earningPower,address _delegate ,,,uint256 scaledRewardRate) = staker.deposits(_depositId);
+      // if (_delegate == address(0)) continue;
+
+      uint256 _score = oracleEligibilityModule.delegateeScores(_delegate);
+      if (_score <= 65) continue;
+      if (!oracleEligibilityModule.isDelegateeEligible(_delegate)) continue;
+
+      IntervalCsvRow memory _row;
+      _row.delegate = _delegate;
+      _row.oldEarningPower = uint256(_earningPower);
+      _row.newEarningPower = uint256(0);
+      _row.oldScaledRewardRate = scaledRewardRate;
+      _row.newScaledRewardRate = 0;
+      _row.oldRewardRatePerSecond = 0;
+      _row.newRewardRatePerSecond = 0;
+
+      _buffer[_count] = _row;
+      _depositIds[_count] = _depositId;
+      _delegates[_count] = _delegate;
+      _count++;
+    }
+
+    _rows = new IntervalCsvRow[](_count);
+    for (uint256 _j = 0; _j < _count; _j++) {
+      _rows[_j] = _buffer[_j];
+    }
+
+    if (_count == 0) return _rows;
+
+    uint48 _newInterval = 151_200;
+
+    vm.prank(owner);
+    calculator.setVotingPowerUpdateInterval(_newInterval);
+
+    for (uint256 _j = 0; _j < _count; _j++) {
+      // _rollToNextSnapshotBoundary(_newInterval);
+      address _bumper = address(uint160(_j + 1));
+      _rows[_j] =
+        _bumpAndRefreshRow(_rows[_j], _depositIds[_j], _delegates[_j], _bumper);
+    }
+	console2.logUint(staker.scaledRewardRate());
+
+  }
+
+  function _bumpAndRefreshRow(
+    IntervalCsvRow memory _row,
+    Staker.DepositIdentifier _depositId,
+    address,
+    address _bumper
+  ) internal returns (IntervalCsvRow memory _updatedRow) {
+    _updatedRow = _row;
+    try staker.bumpEarningPower(_depositId, _bumper, 0) {
+      (,,uint256 earningPower,,,,uint256 scaledRewardRate) = staker.deposits(_depositId);
+      uint256 _newScaledRewardRate = scaledRewardRate;
+      _updatedRow.newEarningPower = earningPower;
+      _updatedRow.newScaledRewardRate = _newScaledRewardRate;
+    } catch {
+      (,,uint256 earningPower,,,,uint256 scaledRewardRate) = staker.deposits(_depositId);
+      uint256 _newScaledRewardRate = scaledRewardRate;
+      _updatedRow.newEarningPower = earningPower;
+      _updatedRow.newScaledRewardRate = _newScaledRewardRate;
+	}
+  }
+
+  function testForkFuzz_InitializeDelegateCompensationAtStartOfSecondEpoch(uint256 _percentDuration)
+    public
+  {
     address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
-	uint256 _votingPower = 976167703294540727119392;
+    uint256 _votingPower = 976_167_703_294_540_727_119_392;
     _percentDuration = bound(_percentDuration, 1, 100);
 
     vm.roll(block.number + calculator.votingPowerUpdateInterval());
@@ -1039,7 +1207,7 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     uint256 _percentDuration
   ) public {
     address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
-	uint256 _delegateVotingPower = 976167703294540727119392;
+    uint256 _delegateVotingPower = 976_167_703_294_540_727_119_392;
     _percentDuration = bound(_percentDuration, 1, 100);
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
@@ -1047,7 +1215,7 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     Staker.DepositIdentifier _depositId = staker.initializeDelegateCompensation(_delegate);
     _setDelegateeEligibility(_delegate, true);
     staker.bumpEarningPower(_depositId, _delegate, 0);
-	// Delegate not initialized at this block
+    // Delegate not initialized at this block
     // Delegate already initialized via updateDelegateeScore in _delegateEligibleDelegateVotingPower
     // Staker.DepositIdentifier _depositId = staker.delegateDepositId(_delegate);
 
@@ -1115,8 +1283,8 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
   ) public {
     address _delegate1 = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
     address _delegate2 = 0x7C4b6f39D62Ca59ED3a4EFD4c347E23417ec5d5f; // Scopelift
-	uint256  _votingPower1 = 976167703294540727119392;
-	uint256  _votingPower2 =  252560096913378840479288;
+    uint256 _votingPower1 = 976_167_703_294_540_727_119_392;
+    uint256 _votingPower2 = 252_560_096_913_378_840_479_288;
     _percentDuration = bound(_percentDuration, 1, 100);
 
     // Split elgibility from voting power as elgiibility will move 1 block forward
@@ -1235,9 +1403,7 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     assertLteWithinOnePercent(staker.unclaimedReward(_depositId), _expectedUnclaimedReward);
   }
 
-  function testForkFuzz_DelegateAccruesRewardWhenOracleIsPaused(
-    uint256 _percentDuration
-  ) public {
+  function testForkFuzz_DelegateAccruesRewardWhenOracleIsPaused(uint256 _percentDuration) public {
     address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
     _percentDuration = bound(_percentDuration, 1, 100);
 
@@ -1269,11 +1435,8 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     assertEq(staker.unclaimedReward(_depositId), 0);
   }
 
-  function testForkFuzz_DelegateAccruesRewardWhenOracleIsStale(
-    uint256 _percentDuration
-  ) public {
+  function testForkFuzz_DelegateAccruesRewardWhenOracleIsStale(uint256 _percentDuration) public {
     address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
-
 
     // Move forward so snapshot is not the same block as `SNAPSHOT_START_BLOCK`
     vm.roll(block.number + 1);
@@ -1392,9 +1555,7 @@ contract DeployedUnclaimedReward is DelegateCompensationStakerIntegrationTestBas
     return true;
   }
 
-  function testFuzz_CalculatesCorrectEarningsForASingleDelegate(
-    uint256 _percentDuration
-  ) public {
+  function testFuzz_CalculatesCorrectEarningsForASingleDelegate(uint256 _percentDuration) public {
     address _delegate = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
     _percentDuration = bound(_percentDuration, 1, 100);
 
@@ -1409,9 +1570,7 @@ contract DeployedUnclaimedReward is DelegateCompensationStakerIntegrationTestBas
     assertLteWithinOnePercent(_unclaimedReward, _expectedReward);
   }
 
-  function testFuzz_CalculatesCorrectEarningsForMultipleDelegates(
-    uint256 _percentDuration
-  ) public {
+  function testFuzz_CalculatesCorrectEarningsForMultipleDelegates(uint256 _percentDuration) public {
     address _delegate1 = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2 Beat
     address _delegate2 = 0x7C4b6f39D62Ca59ED3a4EFD4c347E23417ec5d5f; // Scopelift
     _percentDuration = bound(_percentDuration, 1, 100);
@@ -1442,19 +1601,19 @@ contract DeployedUnclaimedReward is DelegateCompensationStakerIntegrationTestBas
   }
 }
 
-contract DeployedAlterClaimer is AlterClaimer{
+contract DeployedAlterClaimer is AlterClaimer {
   function _useDeployedCompensationSystem() internal virtual override returns (bool) {
     return true;
   }
 }
 
-contract DeployedClaimReward is ClaimReward{
+contract DeployedClaimReward is ClaimReward {
   function _useDeployedCompensationSystem() internal virtual override returns (bool) {
     return true;
   }
 }
 
-contract DeployedBumpEarningPower is BumpEarningPower{
+contract DeployedBumpEarningPower is BumpEarningPower {
   function _useDeployedCompensationSystem() internal virtual override returns (bool) {
     return true;
   }
@@ -1498,7 +1657,6 @@ contract DeployedBumpEarningPower is BumpEarningPower{
     _addDelegateVotingPower(_delegator2, _delegatee, _newVotingPower);
     vm.roll(block.number + calculator.votingPowerUpdateInterval());
 
-
     // lower bound set to 1 to prevent bumpEarningPower revert on insufficient unclaimedRewards
     _percentDuration = bound(_percentDuration, 1, 50);
     _jumpAheadByPercentOfRewardDuration(_percentDuration);
@@ -1516,5 +1674,3 @@ contract DeployedBumpEarningPower is BumpEarningPower{
     );
   }
 }
-
-

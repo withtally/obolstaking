@@ -5,6 +5,7 @@
   remappings = ["staker-test/=lib/staker/test"]
   solc_version = "0.8.28"
   verbosity = 3
+  fs_permissions = [{ access = "write", path = "./test-artifacts"}]
 
 [profile.deployment]
   optimizer_runs = 5083
