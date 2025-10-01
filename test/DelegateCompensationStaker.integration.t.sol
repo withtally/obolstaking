@@ -1035,26 +1035,11 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
 
   // Updates deployed voting power interval, checks reward invariants, bumps earning power, and
   // stores deltas for manual review.
-  function test_updateIntercval() public {
+  function test_IntervalDifference() public {
     vm.createSelectFork(vm.rpcUrl("mainnet_rpc_url"), 23_441_402);
 
-    IntervalCsvRow[] memory _rows = _collectDepositRows();
+    IntervalCsvRow[] memory _rows = _collectDepositRows(151_200); // 3 weeks in blocks
     _writeIntervalCsv(_rows);
-  }
-
-  function _snapshotBlockForInterval(uint48 _interval) internal view returns (uint48) {
-    require(_interval != 0, "interval zero");
-    uint256 _start = calculator.SNAPSHOT_START_BLOCK();
-    uint256 _safeBlock = block.number > _start ? block.number - 1 : _start;
-    uint256 _intervalsPassed = (_safeBlock - _start) / _interval;
-    return uint48(_start + _intervalsPassed * _interval);
-  }
-
-  function _rollToNextSnapshotBoundary(uint48 _interval) internal {
-    uint256 _start = calculator.SNAPSHOT_START_BLOCK();
-    uint256 _safeBlock = block.number > _start ? block.number - 1 : _start;
-    uint256 _intervalsPassed = (_safeBlock - _start) / _interval;
-    vm.roll(_start + (_intervalsPassed + 1) * _interval + 1);
   }
 
   function _writeIntervalCsv(IntervalCsvRow[] memory _rows) internal {
@@ -1099,15 +1084,10 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
     vm.writeFile(_path, _content);
   }
 
-  function _collectDepositRows() internal returns (IntervalCsvRow[] memory _rows) {
-    // 1. Capture existing earning power and reward rates for tracked deposits.
-    // 2. Update the voting power interval to 151200 blocks (≈3 weeks at 12s).
-    // 3. Bump every qualifying deposit and compute new earning power plus reward rate metrics.
-
-    // uint48 _oldInterval = calculator.votingPowerUpdateInterval();
-    // uint256 _scaleFactor = staker.SCALE_FACTOR();
-    // uint256 _oldScaledRewardRate = staker.scaledRewardRate();
-
+  // 1. Capture existing earning power and reward rates for tracked deposits.
+  // 2. Update the voting power interval to 151200 blocks (≈3 weeks at 12s).
+  // 3. Bump every qualifying deposit and compute new earning power plus reward rate metrics.
+  function _collectDepositRows(uint48 _newInterval) internal returns (IntervalCsvRow[] memory _rows) {
     IntervalCsvRow[] memory _buffer = new IntervalCsvRow[](58);
     Staker.DepositIdentifier[] memory _depositIds = new Staker.DepositIdentifier[](58);
     address[] memory _delegates = new address[](58);
@@ -1115,8 +1095,7 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
 
     for (uint256 _i = 0; _i < 58; _i++) {
       Staker.DepositIdentifier _depositId = Staker.DepositIdentifier.wrap(_i + 1);
-      (,,uint256 _earningPower,address _delegate ,,,uint256 scaledRewardRate) = staker.deposits(_depositId);
-      // if (_delegate == address(0)) continue;
+      (,,uint256 _earningPower,address _delegate ,,,uint256 _scaledRewardRate) = staker.deposits(_depositId);
 
       uint256 _score = oracleEligibilityModule.delegateeScores(_delegate);
       if (_score <= 65) continue;
@@ -1126,7 +1105,7 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
       _row.delegate = _delegate;
       _row.oldEarningPower = uint256(_earningPower);
       _row.newEarningPower = uint256(0);
-      _row.oldScaledRewardRate = scaledRewardRate;
+      _row.oldScaledRewardRate = _scaledRewardRate;
       _row.newScaledRewardRate = 0;
       _row.oldRewardRatePerSecond = 0;
       _row.newRewardRatePerSecond = 0;
@@ -1144,19 +1123,14 @@ contract DeployedDelegateCompensationStakerIntegrationTest is
 
     if (_count == 0) return _rows;
 
-    uint48 _newInterval = 151_200;
-
     vm.prank(owner);
     calculator.setVotingPowerUpdateInterval(_newInterval);
 
     for (uint256 _j = 0; _j < _count; _j++) {
-      // _rollToNextSnapshotBoundary(_newInterval);
       address _bumper = address(uint160(_j + 1));
       _rows[_j] =
         _bumpAndRefreshRow(_rows[_j], _depositIds[_j], _delegates[_j], _bumper);
     }
-	console2.logUint(staker.scaledRewardRate());
-
   }
 
   function _bumpAndRefreshRow(
