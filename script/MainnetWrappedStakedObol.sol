@@ -8,9 +8,12 @@ contract MainnetWrappedStakedObolDeploy is BaseWrappedStakedObolDeploy {
   function _getWrapperConfig() internal virtual override returns (ObolWrapperParams memory) {
     uint256 _prefundAmount = 1e18;
 
-    address _expectedWrappedLstAddress = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
-	vm.broadcast(deployer);
-	IERC20(0x01Fe882DBB791Aa17BbcBb054214ecd3eB809c39).approve(_expectedWrappedLstAddress, _prefundAmount);
+    address _expectedWrappedLstAddress =
+      vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
+    vm.broadcast(deployer);
+    IERC20(0x01Fe882DBB791Aa17BbcBb054214ecd3eB809c39).approve(
+      _expectedWrappedLstAddress, _prefundAmount
+    );
     return BaseWrappedStakedObolDeploy.ObolWrapperParams({
       name: "Wrapped Staked Obol",
       symbol: "wstOBOL",

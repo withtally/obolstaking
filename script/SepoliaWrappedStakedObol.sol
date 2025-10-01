@@ -6,10 +6,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SepoliaWrappedStakedObolDeploy is BaseWrappedStakedObolDeploy {
   function _getWrapperConfig() internal virtual override returns (ObolWrapperParams memory) {
-
-    address _expectedWrappedLstAddress = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
-	vm.broadcast(deployer);
-	IERC20(0x01Fe882DBB791Aa17BbcBb054214ecd3eB809c39).approve(_expectedWrappedLstAddress, 100);
+    address _expectedWrappedLstAddress =
+      vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
+    vm.broadcast(deployer);
+    IERC20(0x01Fe882DBB791Aa17BbcBb054214ecd3eB809c39).approve(_expectedWrappedLstAddress, 100);
     return BaseWrappedStakedObolDeploy.ObolWrapperParams({
       name: "Wrapped Staked Obol",
       symbol: "wstObol",
