@@ -11,9 +11,9 @@ contract MainnetWrappedStakedObolDeploy is BaseWrappedStakedObolDeploy {
     address _expectedWrappedLstAddress =
       vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
     vm.broadcast(deployer);
-    IERC20(0x01Fe882DBB791Aa17BbcBb054214ecd3eB809c39).approve(
+    IERC20(0x6590cBBCCbE6B83eF3774Ef1904D86A7B02c2fCC).approve(
       _expectedWrappedLstAddress, _prefundAmount
-    );
+    ); // Approve for stOBOL
     return BaseWrappedStakedObolDeploy.ObolWrapperParams({
       name: "Wrapped Staked Obol",
       symbol: "wstOBOL",
