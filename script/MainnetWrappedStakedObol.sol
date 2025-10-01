@@ -17,8 +17,8 @@ contract MainnetWrappedStakedObolDeploy is BaseWrappedStakedObolDeploy {
     return BaseWrappedStakedObolDeploy.ObolWrapperParams({
       name: "Wrapped Staked Obol",
       symbol: "wstOBOL",
-      lst: 0x1932e815254c53B3Ecd81CECf252A5AC7f0e8BeA,
-      delegatee: 0xC0c2fC4e158b9F51AE484B6bd66BB7185085C40a,
+      lst: 0x1932e815254c53B3Ecd81CECf252A5AC7f0e8BeA, // Rebasing Staked Obol
+      delegatee: 0xC0c2fC4e158b9F51AE484B6bd66BB7185085C40a, // Auto-delegate
       initialOwner: 0x42D201CC4d9C1e31c032397F54caCE2f48C1FA72,
       preFundAmount: _prefundAmount
     });
