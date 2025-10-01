@@ -3,10 +3,7 @@
     "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
   },
   "lib/stGOV": {
-    "tag": {
-      "name": "v1.1.2",
-      "rev": "f41a2a24da46d86c54fe335de6320c1381cb3a14"
-    }
+    "rev": "3894ae39b2faf30ddae2a5c3c2e67cc1603a6473"
   },
   "lib/staker": {
     "tag": {
