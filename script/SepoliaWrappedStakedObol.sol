@@ -14,7 +14,7 @@ contract SepoliaWrappedStakedObolDeploy is BaseWrappedStakedObolDeploy {
       name: "Wrapped Staked Obol",
       symbol: "wstObol",
       lst: 0xc397DB883fBA93647881e3cc554078c66b21b20c,
-      delegatee: 0xC0c2fC4e158b9F51AE484B6bd66BB7185085C40a,
+      delegatee: 0xCa28852B6Fc15EbD95b17c875D5Eb14b08579158,
       initialOwner: 0xEAC5F0d4A9a45E1f9FdD0e7e2882e9f60E301156,
       preFundAmount: 100
     });
